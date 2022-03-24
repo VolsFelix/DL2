@@ -29,42 +29,55 @@ train, val = train_test_split(train, test_size=0.2)
 ### First step is to encode the categorical variables: category and SKU
 
 
+inputs_cat = tf.keras.layers.Input(shape=(1,),name = 'in_cats')
 
-#######################
-#one categorical feature (one-hot) and one numeric feature
-#Embeddings
+embedding_cat = tf.keras.layers.Embedding(input_dim=train['category'].nunique()+1, output_dim=3, input_length=1,name = 'embedding_cat')(inputs_cat)
 
-#consider the following data where integers represent categories:
-x_cat = PRICING['category']
-x_num = PRICING['price'] #numeric
-#random y data
-y = PRICING['quantity']
+embedding_flat_cat = tf.keras.layers.Flatten(name='flatten')(embedding_cat) 
 
+## embedding the sku
 
-inputs_cat = tf.keras.layers.Input(shape=(1,),name = 'in_cat')
-embedding = tf.keras.layers.Embedding(input_dim=len(x_cat.unique()), output_dim=3, input_length=1,name = 'embedding')(inputs_cat)
-#Embedding shape is (None, 1, 3)
-#Need to flatten to make shape compatible with numeric input, which only has two dimensions: (None, 1)
-embedding_flat = tf.keras.layers.Flatten(name='flatten')(embedding) 
+inputs_sku = tf.keras.layers.Input(shape=(1,),name = 'in_sku')
+embedding_sku = tf.keras.layers.Embedding(input_dim=PRICING['sku'].nunique(), output_dim=3, input_length=1,name = 'embedding_sku')(inputs_sku)
+embedding_flat_sku = tf.keras.layers.Flatten(name='flatten2')(embedding_sku) 
 
-#input for the integer numbers
-inputs_num = tf.keras.layers.Input(shape=(1,),name = 'in_num')
+# combining the categorical embedding layers
+cats_concat = tf.keras.layers.Concatenate(name = 'concatenation1')([embedding_flat_cat, embedding_flat_sku])
 
-#input for embedding sku. Commented out for now Cause i Couldnt get it to fit in with everything else
-# inputs_sku = tf.keras.layers.Input(shape=(1,),name = 'in_sku')
-# embedding_sku = tf.keras.layers.Embedding(input_dim=len(PRICING['sku'].unique()), output_dim=3, input_length=1,name = 'embedding_sku')(inputs_sku)
-# embedding_flat_sku = tf.keras.layers.Flatten(name='flatten_sku')(embedding_sku)
-
-#combinging the input layers
-inputs_concat = tf.keras.layers.Concatenate(name = 'concatenation')([embedding_flat, inputs_num])
-hidden = tf.keras.layers.Dense(2,name='hidden')(inputs_concat)
-outputs = tf.keras.layers.Dense(1, name = 'out')(hidden)
+#input for the quantity, price,order, and duration
+inputs_num = tf.keras.layers.Input(shape=(4,),name = 'in_num')
 
 
-model = tf.keras.Model(inputs = [inputs_cat,inputs_num], outputs = outputs)
+#combinging the all input layers
+inputs_concat2 = tf.keras.layers.Concatenate(name = 'concatenation')([cats_concat, inputs_num])
+
+## Hidden Layers
+hidden1 = tf.keras.layers.Dense(2,activation='sigmoid',name='hidden')(inputs_concat2)
+
+#output layer
+outputs = tf.keras.layers.Dense(1, name = 'out')(hidden1)
+
+inputs=[inputs_cat,inputs_sku,inputs_num]
+
+model = tf.keras.Model(inputs = inputs, outputs = outputs)
+
 model.summary()
-model.compile(loss = 'mse', optimizer = tf.keras.optimizers.SGD(learning_rate = 0.001))
-model.fit(x=[x_cat,x_num],y=y, batch_size=100, epochs=1)
+model.compile(loss = 'mse', optimizer = tf.keras.optimizers.SGD(learning_rate = 0.01))
+
+
+## seperating the numerical features from rest of dataset
+num_features=train.drop(['sku'], axis=1)
+num_features=num_features.drop(['category'], axis=1)
+
+## creates an input dictionary for the model
+input_dict= {
+    'in_cats':train["category"],
+    "in_sku":train["sku"],
+    "in_num": num_features
+}
+
+
+model.fit(x=input_dict,y=train['order'], batch_size=50, epochs=1)
 
 
 
