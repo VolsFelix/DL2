@@ -1,10 +1,8 @@
 ## Group 2 Deep Learning Project
-# The
-# goal of this assignment is to gather experience on the sensitivity of the algorithm to different
+# The goal of this assignment is to gather experience on the sensitivity of the algorithm to different
 # kinds of tuning parameters: batch size, number of hidden layers, number hidden neurons, hidden
-# activation functions (sigmoid, tanh, relu, leaky relu, prelu, el
-# u), optimizers (plain SGD,
-# momentum, nesterov, adagrad, rmsprop, adam, learning rate scheduling
+# activation functions (sigmoid, tanh, relu, leaky relu, prelu, elu),
+# optimizers (plain SGD, momentum, nesterov, adagrad, rmsprop, adam, learning rate scheduling)
 
 # The goal is to
 # predict quantity sold of a given product as accurately as possible by tuning the learning procedure
@@ -33,7 +31,7 @@ inputs_cat = tf.keras.layers.Input(shape=(1,),name = 'in_cats')
 
 embedding_cat = tf.keras.layers.Embedding(input_dim=train['category'].nunique()+1, output_dim=3, input_length=1,name = 'embedding_cat')(inputs_cat)
 
-embedding_flat_cat = tf.keras.layers.Flatten(name='flatten')(embedding_cat) 
+embedding_flat_cat = tf.keras.layers.Flatten(name='flatten')(embedding_cat)
 
 ## embedding the sku
 
@@ -45,8 +43,7 @@ embedding_flat_sku = tf.keras.layers.Flatten(name='flatten2')(embedding_sku)
 cats_concat = tf.keras.layers.Concatenate(name = 'concatenation1')([embedding_flat_cat, embedding_flat_sku])
 
 #input for the quantity, price,order, and duration
-inputs_num = tf.keras.layers.Input(shape=(4,),name = 'in_num')
-
+inputs_num = tf.keras.layers.Input(shape=(3,),name = 'in_num')
 
 #combinging the all input layers
 inputs_concat2 = tf.keras.layers.Concatenate(name = 'concatenation')([cats_concat, inputs_num])
@@ -68,6 +65,7 @@ model.compile(loss = 'mse', optimizer = tf.keras.optimizers.SGD(learning_rate = 
 ## seperating the numerical features from rest of dataset
 num_features=train.drop(['sku'], axis=1)
 num_features=num_features.drop(['category'], axis=1)
+num_features=num_features.drop(['quantity'], axis=1)
 
 ## creates an input dictionary for the model
 input_dict= {
@@ -77,7 +75,7 @@ input_dict= {
 }
 
 
-model.fit(x=input_dict,y=train['order'], batch_size=50, epochs=1)
+model.fit(x=input_dict,y=train['quantity'], batch_size=50, epochs=1)
 
 
 
