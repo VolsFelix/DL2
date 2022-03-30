@@ -47,14 +47,7 @@ inputs_sku = tf.keras.layers.Input(shape=(1,),name = 'in_sku')
 embedding_sku = tf.keras.layers.Embedding(input_dim=PRICING['sku'].nunique(), output_dim=100, input_length=1,name = 'embedding_sku')(inputs_sku)
 embedding_flat_sku = tf.keras.layers.Flatten(name='flatten2')(embedding_sku)
 
-## Concatenation of all input layers
-# combining the categorical embedding layers
-cats_concat = tf.keras.layers.Concatenate(name = 'concatenation1')([embedding_flat_cat, embedding_flat_sku])
-#input for the quantity, price,order, and duration
-inputs_num = tf.keras.layers.Input(shape=(3,),name = 'in_num')
-#combinging the all input layers
-inputs_concat2 = tf.keras.layers.Concatenate(name = 'concatenation')([cats_concat, inputs_num])
-
+#### Defining Functions to Use to build and tune model
 ## Hidden Layers
 def create_hidden(nodes_list, activation_function = 'elu'):
     '''
@@ -66,9 +59,20 @@ def create_hidden(nodes_list, activation_function = 'elu'):
     # Initialize first hidden node
     hidden = tf.keras.layers.Dense(nodes_list[1],activation = activation_function)(inputs_concat2)
     # loop through remaining hidden layers
-    if nodes_list > 1:
+    if len(nodes_list) > 1:
         for i in range(len(nodes_list)-1):
             hidden = tf.keras.layers.Dense(nodes_list[i], activation = activation_function)(hidden)
+    return hidden
+
+## Concatenation of all input layers
+# combining the categorical embedding layers
+cats_concat = tf.keras.layers.Concatenate(name = 'concatenation1')([embedding_flat_cat, embedding_flat_sku])
+#input for the quantity, price,order, and duration
+inputs_num = tf.keras.layers.Input(shape=(3,),name = 'in_num')
+#combinging the all input layers
+inputs_concat2 = tf.keras.layers.Concatenate(name = 'concatenation')([cats_concat, inputs_num])
+
+hidden = create_hidden(nodes_list = [20,10,11], activation_function = 'elu')
 
 ## Output layer
 outputs = tf.keras.layers.Dense(1, name = 'out')(hidden)
