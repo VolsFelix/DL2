@@ -15,7 +15,6 @@ from tensorflow import feature_column
 from tensorflow.keras import layers
 
 
-
 PRICING= pd.read_csv('pricing.csv')
 PRICING.head()
 
@@ -25,16 +24,12 @@ train, val = train_test_split(train, test_size=0.2)
 
 
 ### First step is to encode the categorical variables: category and SKU
-
-
 inputs_cat = tf.keras.layers.Input(shape=(1,),name = 'in_cats')
-
+# embedding category
 embedding_cat = tf.keras.layers.Embedding(input_dim=train['category'].nunique()+1, output_dim=3, input_length=1,name = 'embedding_cat')(inputs_cat)
-
 embedding_flat_cat = tf.keras.layers.Flatten(name='flatten')(embedding_cat)
 
-## embedding the sku
-
+# embedding the sku
 inputs_sku = tf.keras.layers.Input(shape=(1,),name = 'in_sku')
 embedding_sku = tf.keras.layers.Embedding(input_dim=PRICING['sku'].nunique(), output_dim=3, input_length=1,name = 'embedding_sku')(inputs_sku)
 embedding_flat_sku = tf.keras.layers.Flatten(name='flatten2')(embedding_sku)
@@ -73,7 +68,6 @@ input_dict= {
     "in_sku":train["sku"],
     "in_num": num_features
 }
-
 
 model.fit(x=input_dict,y=train['quantity'], batch_size=50, epochs=1)
 
