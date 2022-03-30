@@ -18,6 +18,19 @@ from tensorflow.keras import layers
 PRICING= pd.read_csv('pricing.csv')
 PRICING.head()
 
+# Check if the values are consecutively encoded:
+def checkConsecutive(l):
+    return sorted(l) == list(range(min(l), max(l) + 1))
+print(checkConsecutive(np.unique(PRICING['sku'])))
+print(checkConsecutive(np.unique(PRICING['category'])))
+
+# Change category to consecutive integer
+cond_list = [PRICING['category']<2, PRICING['category']>2, PRICING['category']==2]
+choice_list = [PRICING['category'], PRICING['category']-1, -1]
+PRICING["category"] = np.select(cond_list,choice_list)
+# Confirm
+print(checkConsecutive(np.unique(PRICING['category'])))
+
 ## splitting the data into test and train sets
 train, test = train_test_split(PRICING, test_size=0.2)
 train, val = train_test_split(train, test_size=0.2)
