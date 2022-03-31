@@ -13,7 +13,7 @@ import tensorflow as tf
 from sklearn.model_selection import train_test_split
 from tensorflow import feature_column
 from tensorflow.keras import layers
-
+from itertools import product
 
 #### Reading and Cleaning
 PRICING= pd.read_csv('pricing.csv')
@@ -111,20 +111,20 @@ def create_hidden(inputs, nodes_list, activation_function, batch_norm = False, i
     kernel_initializer = get_kernel_initializer(activation_function, initializer_name)
 
     if batch_norm:
-        hidden = tf.keras.layers.Dense(nodes_list[1], kernel_initializer=kernel_initializer)(inputs)
+        hidden = tf.keras.layers.Dense(nodes_list[0], kernel_initializer=kernel_initializer)(inputs)
         BN = tf.keras.layers.BatchNormalization()(hidden)
         hiddenAct = tf.keras.layers.Activation('elu')(BN)
         if len(nodes_list) > 1:
             for i in range(len(nodes_list) - 1):
-                hidden = tf.keras.layers.Dense(nodes_list[i], kernel_initializer=kernel_initializer)(hiddenAct)
+                hidden = tf.keras.layers.Dense(nodes_list[i+1], kernel_initializer=kernel_initializer)(hiddenAct)
                 BN = tf.keras.layers.BatchNormalization()(hidden)
                 hiddenAct = tf.keras.layers.Activation('elu')(BN)
         return hiddenAct
     else:
-        hidden = tf.keras.layers.Dense(nodes_list[1], kernel_initializer=kernel_initializer)(inputs)
+        hidden = tf.keras.layers.Dense(nodes_list[0], kernel_initializer=kernel_initializer)(inputs)
         if len(nodes_list) > 1:
             for i in range(len(nodes_list) - 1):
-                hidden = tf.keras.layers.Dense(nodes_list[i], kernel_initializer=kernel_initializer)(hidden)
+                hidden = tf.keras.layers.Dense(nodes_list[i+1], kernel_initializer=kernel_initializer)(hidden)
         return hidden
 
 ## Optimizers
@@ -162,7 +162,7 @@ def create_model(nodes_list, activation_function, batch_norm = False,
 
     # sku
     inputs_sku = tf.keras.layers.Input(shape=(1,),name = 'in_sku')
-    embedding_sku = tf.keras.layers.Embedding(input_dim=PRICING['sku'].nunique(), output_dim=100, input_length=1,name = 'embedding_sku')(inputs_sku)
+    embedding_sku = tf.keras.layers.Embedding(input_dim=PRICING['sku'].nunique(), output_dim=200, input_length=1,name = 'embedding_sku')(inputs_sku)
     embedding_flat_sku = tf.keras.layers.Flatten(name='flatten2')(embedding_sku)
 
     ## Concatenation of all input layers
@@ -188,22 +188,43 @@ def create_model(nodes_list, activation_function, batch_norm = False,
 
 
 #### Training Model
+def expand_grid(dictionary):
+   return pd.DataFrame([row for row in product(*dictionary.values())],
+                       columns=dictionary.keys())
 
-nodes_list = [1000,200,100]
-activation_function = 'elu'
-learning_rate = 0.001
-batch_norm = True
-initializer_name = 'he_avg_normal'
-optimizer_name = 'Adam'
-epochs = 1
-batch_size = 30
 
-model = create_model(nodes_list, activation_function, batch_norm = False, initializer_name = None)
+# - tanh
+# options: 'glorot_uniform', 'glorot_normal'
+# - sigmoid
+# options: 'uniform', 'untruncated_normal'
+# - relu and friends
+# options: 'he_normal', 'he_uniform', 'he_avg_normal', 'he_avg_uniform'
+dictionary = {'nodes_list': [[200,100,50]],
+              'activation_function': ["sigmoid","tanh","relu","leaky relu","prelu","elu"],
+              'learning_rate': [0.001,0.01,0.1],
+              'batch_norm': [True, False],
+              'initializer_name': ['glorot_uniform', 'glorot_normal', 'uniform', 'untruncated_normal', 'he_normal', 'he_uniform', 'he_avg_normal', 'he_avg_uniform'],
+              'optimizer_name':["plain SGD","momentum","nesterov","adagrad","RMSprop","Adam","learning rate scheduling"],
+              'epochs':[10],
+              'batch_size': [10, 30, 50] }
+grid = expand_grid(dictionary)
+
+# Remove incompatible combinations
+grid = grid[-((grid['activation_function'] != 'tanh') & (grid['initializer_name'] == 'glorot_uniform'))]
+grid = grid[-((grid['activation_function'] != 'tanh') & (grid['initializer_name'] == 'glorot_normal'))]
+grid = grid[-((grid['activation_function'] != 'sigmoid') & (grid['initializer_name'] == 'uniform'))]
+grid = grid[-((grid['activation_function'] != 'sigmoid') & (grid['initializer_name'] == 'untruncated_normal'))]
+grid = grid[-((grid['activation_function'] == 'tanh') | (grid['activation_function'] == 'sigmoid'))]
+grid = grid.reset_index(drop = True)
+
+
+grid_row = grid.loc[1]
+
+model = create_model(grid_row['nodes_list'], grid_row['activation_function'], batch_norm = grid_row['batch_norm'],
+                     initializer_name = grid_row['initializer_name'])
 model.summary()
-optimizer = get_optimizer(learning_rate, optimizer_name)
+optimizer = get_optimizer(grid_row['learning_rate'], grid_row['optimizer_name'])
 model.compile(loss='mse', optimizer=optimizer)
-model_history = model.fit(x=input_dict, y=train['quantity'], batch_size=batch_size, epochs=epochs)
-
-
+model_history = model.fit(x=input_dict, y=train['quantity'], batch_size=grid_row['batch_size'], epochs=grid_row['batch_size'])
 
 
