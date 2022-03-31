@@ -207,7 +207,15 @@ grid = grid[-((grid['activation_function'] != 'tanh') & (grid['initializer_name'
 grid = grid[-((grid['activation_function'] != 'tanh') & (grid['initializer_name'] == 'glorot_normal'))]
 grid = grid[-((grid['activation_function'] != 'sigmoid') & (grid['initializer_name'] == 'uniform'))]
 grid = grid[-((grid['activation_function'] != 'sigmoid') & (grid['initializer_name'] == 'untruncated_normal'))]
-grid = grid[-((grid['activation_function'] == 'tanh') | (grid['activation_function'] == 'sigmoid'))]
+grid = grid[-((grid['activation_function'] == 'tanh') & (grid['initializer_name'] == 'he_normal'))]
+grid = grid[-((grid['activation_function'] == 'tanh') & (grid['initializer_name'] == 'he_uniform'))]
+grid = grid[-((grid['activation_function'] == 'tanh') & (grid['initializer_name'] == 'he_avg_normal'))]
+grid = grid[-((grid['activation_function'] == 'tanh') & (grid['initializer_name'] == 'he_avg_uniform'))]
+grid = grid[-((grid['activation_function'] == 'sigmoid') & (grid['initializer_name'] == 'he_normal'))]
+grid = grid[-((grid['activation_function'] == 'sigmoid') & (grid['initializer_name'] == 'he_uniform'))]
+grid = grid[-((grid['activation_function'] == 'sigmoid') & (grid['initializer_name'] == 'he_avg_normal'))]
+grid = grid[-((grid['activation_function'] == 'sigmoid') & (grid['initializer_name'] == 'he_avg_uniform'))]
+
 grid = grid.reset_index(drop = True)
 
 
