@@ -192,13 +192,6 @@ def expand_grid(dictionary):
    return pd.DataFrame([row for row in product(*dictionary.values())],
                        columns=dictionary.keys())
 
-
-# - tanh
-# options: 'glorot_uniform', 'glorot_normal'
-# - sigmoid
-# options: 'uniform', 'untruncated_normal'
-# - relu and friends
-# options: 'he_normal', 'he_uniform', 'he_avg_normal', 'he_avg_uniform'
 dictionary = {'nodes_list': [[200,100,50]],
               'activation_function': ["sigmoid","tanh","relu","leaky relu","prelu","elu"],
               'learning_rate': [0.001,0.01,0.1],
@@ -209,7 +202,7 @@ dictionary = {'nodes_list': [[200,100,50]],
               'batch_size': [10, 30, 50] }
 grid = expand_grid(dictionary)
 
-# Remove incompatible combinations
+# Remove incompatible combinations for weight initialization and activaiton functions
 grid = grid[-((grid['activation_function'] != 'tanh') & (grid['initializer_name'] == 'glorot_uniform'))]
 grid = grid[-((grid['activation_function'] != 'tanh') & (grid['initializer_name'] == 'glorot_normal'))]
 grid = grid[-((grid['activation_function'] != 'sigmoid') & (grid['initializer_name'] == 'uniform'))]
@@ -218,6 +211,7 @@ grid = grid[-((grid['activation_function'] == 'tanh') | (grid['activation_functi
 grid = grid.reset_index(drop = True)
 
 
+### If we want to do some sort of loop we can do it with these 6 lines and add some lines to save the information we want:
 grid_row = grid.loc[1]
 
 model = create_model(grid_row['nodes_list'], grid_row['activation_function'], batch_norm = grid_row['batch_norm'],
