@@ -131,20 +131,22 @@ def create_hidden(inputs, nodes_list, activation_function, batch_norm = False, i
 def get_optimizer(learning_rate, optimizer_name = None):
     '''
     :param learning_rate:
-    :param optimizer_name: 'momentum','nesterov','RMSprop','Adam', 'scheduler'
+    :param optimizer_name: 'momentum','nesterov','RMSprop','Adam', 'learning rate scheduling', 'plain SGD'
     :return: optimizer arg for model.compile
     '''
     if optimizer_name == 'momentum':
         return tf.keras.optimizers.SGD(learning_rate = learning_rate, momentum = 0.9)
     elif optimizer_name == 'nesterov':
         return tf.keras.optimizers.SGD(learning_rate = learning_rate, momentum = 0.9, nesterov = True)
+    elif optimizer_name == 'adagrad':
+        return tf.keras.optimizers.Adagrad(learning_rate = learning_rate, initial_accumulator_value = 0.1, epsilon = 1e-07)
     elif optimizer_name == 'RMSprop':
         return tf.keras.optimizers.RMSprop(learning_rate = learning_rate, rho = 0.9, momentum = 0.0, epsilon = 1e-07)
     elif optimizer_name == 'Adam':
         return tf.keras.optimizers.Adam(learning_rate = learning_rate, beta_1 = 0.9, beta_2 = 0.99, epsilon = 1e-07)
     elif optimizer_name == 'learning rate scheduling':
-        return tf.keras.optimizers.schedules.ExponentialDecay(initial_learning_rate, decay_steps, decay_rate)
-    elif optimizer_name is None:
+        return tf.keras.optimizers.schedules.ExponentialDecay(learning_rate, 10000, 0.95)
+    elif optimizer_name == 'plain SGD':
         return tf.keras.optimizers.SGD(learning_rate = learning_rate)
 
 ## Creating model based on inputs
@@ -185,6 +187,7 @@ def create_model(nodes_list, activation_function, batch_norm = False,
     return model
 
 
+#### Training Model
 
 nodes_list = [1000,200,100]
 activation_function = 'elu'
