@@ -27,7 +27,7 @@ def get_kernel_initializer(activation_function, initializer_name):
     :return: a string or a keras object for kernel_initializer parameter
     '''
     # No activation function was called, so none is returned
-    if activation_function is None:
+    if initializer_name is None :
         return None
 
     # tanh activation function weight initializers
@@ -95,7 +95,7 @@ def create_hidden(inputs, nodes_list, activation_function, batch_norm = False, i
 def get_optimizer(learning_rate, optimizer_name = None):
     '''
     :param learning_rate:
-    :param optimizer_name: 'momentum','nesterov','RMSprop','Adam'
+    :param optimizer_name: 'momentum','nesterov','RMSprop','Adam', 'scheduler'
     :return: optimizer arg for model.compile
     '''
     if optimizer_name == 'momentum':
@@ -106,11 +106,10 @@ def get_optimizer(learning_rate, optimizer_name = None):
         return tf.keras.optimizers.RMSprop(learning_rate = learning_rate, rho = 0.9, momentum = 0.0, epsilon = 1e-07)
     elif optimizer_name == 'Adam':
         return tf.keras.optimizers.Adam(learning_rate = learning_rate, beta_1 = 0.9, beta_2 = 0.99, epsilon = 1e-07)
+    elif optimizer_name == 'learning rate scheduling':
+        return tf.keras.optimizers.schedules.ExponentialDecay(initial_learning_rate, decay_steps, decay_rate)
     elif optimizer_name is None:
         return tf.keras.optimizers.SGD(learning_rate = learning_rate)
-
-def get_learning_schedule(initial_learning_rate, decay_steps, decay_rate):
-    return tf.keras.optimizers.schedules.ExponentialDecay(initial_learning_rate, decay_steps, decay_rate)
 
 
 
@@ -135,43 +134,6 @@ print(checkConsecutive(np.unique(PRICING['category'])))
 train, test = train_test_split(PRICING, test_size=0.2)
 train, val = train_test_split(train, test_size=0.2)
 
-
-#### Embedding and Creating Layers
-## First step is to encode the categorical variables: category and SKU
-# category
-inputs_cat = tf.keras.layers.Input(shape=(1,),name = 'in_cats')
-embedding_cat = tf.keras.layers.Embedding(input_dim=PRICING['category'].nunique()+1, output_dim=16, input_length=1,name = 'embedding_cat')(inputs_cat)
-embedding_flat_cat = tf.keras.layers.Flatten(name='flatten')(embedding_cat)
-
-# sku
-inputs_sku = tf.keras.layers.Input(shape=(1,),name = 'in_sku')
-embedding_sku = tf.keras.layers.Embedding(input_dim=PRICING['sku'].nunique(), output_dim=100, input_length=1,name = 'embedding_sku')(inputs_sku)
-embedding_flat_sku = tf.keras.layers.Flatten(name='flatten2')(embedding_sku)
-
-## Concatenation of all input layers
-# combining the categorical embedding layers
-cats_concat = tf.keras.layers.Concatenate(name = 'concatenation1')([embedding_flat_cat, embedding_flat_sku])
-#input for the quantity, price,order, and duration
-inputs_num = tf.keras.layers.Input(shape=(3,),name = 'in_num')
-#combinging the all input layers
-inputs_concat2 = tf.keras.layers.Concatenate(name = 'concatenation')([cats_concat, inputs_num])
-
-## Defining Hidden Layers
-hidden = create_hidden(inputs_concat2, nodes_list = [20,10,11], activation_function = 'elu', batch_norm = True, initializer_name = 'he_normal')
-
-## Output layer/ Finalize Inputs
-outputs = tf.keras.layers.Dense(1, name = 'out')(hidden)
-inputs=[inputs_cat,inputs_sku,inputs_num]
-
-
-#### Create Model
-model = tf.keras.Model(inputs = inputs, outputs = outputs)
-model.summary()
-
-model.compile(loss = 'mse', optimizer = tf.keras.optimizers.SGD(learning_rate = 0.01))
-
-
-#### Fit Model
 ## seperating the numerical features from rest of dataset
 num_features=train.drop(['sku'], axis=1)
 num_features=num_features.drop(['category'], axis=1)
@@ -184,6 +146,60 @@ input_dict= {
     "in_num": num_features
 }
 
+
+
+def create_model(nodes_list, activation_function, learning_rate, batch_norm = False,
+                 initializer_name = None, optimizer_name = None):
+    #### Embedding and Creating Layers
+    ## First step is to encode the categorical variables: category and SKU
+    # category
+    tf.keras.backend.clear_session()
+    inputs_cat = tf.keras.layers.Input(shape=(1,),name = 'in_cats')
+    embedding_cat = tf.keras.layers.Embedding(input_dim=PRICING['category'].nunique()+1, output_dim=16, input_length=1,name = 'embedding_cat')(inputs_cat)
+    embedding_flat_cat = tf.keras.layers.Flatten(name='flatten')(embedding_cat)
+
+    # sku
+    inputs_sku = tf.keras.layers.Input(shape=(1,),name = 'in_sku')
+    embedding_sku = tf.keras.layers.Embedding(input_dim=PRICING['sku'].nunique(), output_dim=100, input_length=1,name = 'embedding_sku')(inputs_sku)
+    embedding_flat_sku = tf.keras.layers.Flatten(name='flatten2')(embedding_sku)
+
+    ## Concatenation of all input layers
+    # combining the categorical embedding layers
+    cats_concat = tf.keras.layers.Concatenate(name = 'concatenation1')([embedding_flat_cat, embedding_flat_sku])
+    #input for the quantity, price,order, and duration
+    inputs_num = tf.keras.layers.Input(shape=(3,),name = 'in_num')
+    #combinging the all input layers
+    inputs_concat2 = tf.keras.layers.Concatenate(name = 'concatenation')([cats_concat, inputs_num])
+
+    ## Defining Hidden Layers
+    hidden = create_hidden(inputs_concat2, nodes_list = nodes_list, activation_function = activation_function,
+                           batch_norm = batch_norm, initializer_name = initializer_name)
+
+    ## Output layer/ Finalize Inputs
+    outputs = tf.keras.layers.Dense(1, name = 'out')(hidden)
+    inputs=[inputs_cat,inputs_sku,inputs_num]
+
+    #### Create Model
+    model = tf.keras.Model(inputs = inputs, outputs = outputs)
+
+    return model
+
+
+nodes_list = [1000,200,100]
+activation_function = 'elu'
+learning_rate = 0.001
+batch_norm = True
+initializer_name = 'he_avg_normal'
+optimizer_name = 'Adam'
+
+model = create_model(nodes_list, activation_function, learning_rate, batch_norm = False,
+                 initializer_name = None, optimizer_name = None)
+
+model.summary()
+optimizer = get_optimizer(learning_rate, optimizer_name)
+model.compile(loss = 'mse', optimizer = optimizer)
+
+#### Fit Model
 model.fit(x=input_dict,y=train['quantity'], batch_size=50, epochs=1)
 
 
