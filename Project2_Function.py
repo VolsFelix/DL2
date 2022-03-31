@@ -14,6 +14,42 @@ from sklearn.model_selection import train_test_split
 from tensorflow import feature_column
 from tensorflow.keras import layers
 
+
+#### Reading and Cleaning
+PRICING= pd.read_csv('pricing.csv')
+PRICING.head()
+
+# Check if the values are consecutively encoded:
+def checkConsecutive(l):
+    return sorted(l) == list(range(min(l), max(l) + 1))
+print(checkConsecutive(np.unique(PRICING['sku'])))
+print(checkConsecutive(np.unique(PRICING['category'])))
+
+# Change category to consecutive integer
+cond_list = [PRICING['category']<2, PRICING['category']>2, PRICING['category']==2]
+choice_list = [PRICING['category'], PRICING['category']-1, -1]
+PRICING["category"] = np.select(cond_list,choice_list)
+print(checkConsecutive(np.unique(PRICING['category'])))
+
+
+## splitting the data into test and train sets
+train, test = train_test_split(PRICING, test_size=0.2)
+train, val = train_test_split(train, test_size=0.2)
+
+## seperating the numerical features from rest of dataset
+num_features=train.drop(['sku'], axis=1)
+num_features=num_features.drop(['category'], axis=1)
+num_features=num_features.drop(['quantity'], axis=1)
+
+## creates an input dictionary for the model
+input_dict= {
+    'in_cats':train["category"],
+    "in_sku":train["sku"],
+    "in_num": num_features
+}
+
+
+
 #### Defining Functions to Use to build and tune model
 ## kernel_initializer
 def get_kernel_initializer(activation_function, initializer_name):
@@ -111,45 +147,9 @@ def get_optimizer(learning_rate, optimizer_name = None):
     elif optimizer_name is None:
         return tf.keras.optimizers.SGD(learning_rate = learning_rate)
 
-
-
-#### Reading and Cleaning
-PRICING= pd.read_csv('pricing.csv')
-PRICING.head()
-
-# Check if the values are consecutively encoded:
-def checkConsecutive(l):
-    return sorted(l) == list(range(min(l), max(l) + 1))
-print(checkConsecutive(np.unique(PRICING['sku'])))
-print(checkConsecutive(np.unique(PRICING['category'])))
-
-# Change category to consecutive integer
-cond_list = [PRICING['category']<2, PRICING['category']>2, PRICING['category']==2]
-choice_list = [PRICING['category'], PRICING['category']-1, -1]
-PRICING["category"] = np.select(cond_list,choice_list)
-print(checkConsecutive(np.unique(PRICING['category'])))
-
-
-## splitting the data into test and train sets
-train, test = train_test_split(PRICING, test_size=0.2)
-train, val = train_test_split(train, test_size=0.2)
-
-## seperating the numerical features from rest of dataset
-num_features=train.drop(['sku'], axis=1)
-num_features=num_features.drop(['category'], axis=1)
-num_features=num_features.drop(['quantity'], axis=1)
-
-## creates an input dictionary for the model
-input_dict= {
-    'in_cats':train["category"],
-    "in_sku":train["sku"],
-    "in_num": num_features
-}
-
-
-
-def create_model(nodes_list, activation_function, learning_rate, batch_norm = False,
-                 initializer_name = None, optimizer_name = None):
+## Creating model based on inputs
+def create_model(nodes_list, activation_function, batch_norm = False,
+                 initializer_name = None):
     #### Embedding and Creating Layers
     ## First step is to encode the categorical variables: category and SKU
     # category
@@ -185,23 +185,21 @@ def create_model(nodes_list, activation_function, learning_rate, batch_norm = Fa
     return model
 
 
+
 nodes_list = [1000,200,100]
 activation_function = 'elu'
 learning_rate = 0.001
 batch_norm = True
 initializer_name = 'he_avg_normal'
 optimizer_name = 'Adam'
+epochs = 1
+batch_size = 30
 
-model = create_model(nodes_list, activation_function, learning_rate, batch_norm = False,
-                 initializer_name = None, optimizer_name = None)
-
+model = create_model(nodes_list, activation_function, batch_norm = False, initializer_name = None)
 model.summary()
 optimizer = get_optimizer(learning_rate, optimizer_name)
-model.compile(loss = 'mse', optimizer = optimizer)
-
-#### Fit Model
-model.fit(x=input_dict,y=train['quantity'], batch_size=50, epochs=1)
-
+model.compile(loss='mse', optimizer=optimizer)
+model_history = model.fit(x=input_dict, y=train['quantity'], batch_size=batch_size, epochs=epochs)
 
 
 
