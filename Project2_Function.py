@@ -91,6 +91,28 @@ def create_hidden(inputs, nodes_list, activation_function, batch_norm = False, i
                 hidden = tf.keras.layers.Dense(nodes_list[i], kernel_initializer=kernel_initializer)(hidden)
         return hidden
 
+## Optimizers
+def get_optimizer(learning_rate, optimizer_name = None):
+    '''
+    :param learning_rate:
+    :param optimizer_name: 'momentum','nesterov','RMSprop','Adam'
+    :return: optimizer arg for model.compile
+    '''
+    if optimizer_name == 'momentum':
+        return tf.keras.optimizers.SGD(learning_rate = learning_rate, momentum = 0.9)
+    elif optimizer_name == 'nesterov':
+        return tf.keras.optimizers.SGD(learning_rate = learning_rate, momentum = 0.9, nesterov = True)
+    elif optimizer_name == 'RMSprop':
+        return tf.keras.optimizers.RMSprop(learning_rate = learning_rate, rho = 0.9, momentum = 0.0, epsilon = 1e-07)
+    elif optimizer_name == 'Adam':
+        return tf.keras.optimizers.Adam(learning_rate = learning_rate, beta_1 = 0.9, beta_2 = 0.99, epsilon = 1e-07)
+    elif optimizer_name is None:
+        return tf.keras.optimizers.SGD(learning_rate = learning_rate)
+
+def get_learning_schedule(initial_learning_rate, decay_steps, decay_rate):
+    return tf.keras.optimizers.schedules.ExponentialDecay(initial_learning_rate, decay_steps, decay_rate)
+
+
 
 #### Reading and Cleaning
 PRICING= pd.read_csv('pricing.csv')
@@ -114,7 +136,7 @@ train, test = train_test_split(PRICING, test_size=0.2)
 train, val = train_test_split(train, test_size=0.2)
 
 
-#### Embedding
+#### Embedding and Creating Layers
 ## First step is to encode the categorical variables: category and SKU
 # category
 inputs_cat = tf.keras.layers.Input(shape=(1,),name = 'in_cats')
@@ -141,14 +163,15 @@ hidden = create_hidden(inputs_concat2, nodes_list = [20,10,11], activation_funct
 outputs = tf.keras.layers.Dense(1, name = 'out')(hidden)
 inputs=[inputs_cat,inputs_sku,inputs_num]
 
-## Create Model
-model = tf.keras.Model(inputs = inputs, outputs = outputs)
 
+#### Create Model
+model = tf.keras.Model(inputs = inputs, outputs = outputs)
 model.summary()
 
 model.compile(loss = 'mse', optimizer = tf.keras.optimizers.SGD(learning_rate = 0.01))
 
 
+#### Fit Model
 ## seperating the numerical features from rest of dataset
 num_features=train.drop(['sku'], axis=1)
 num_features=num_features.drop(['category'], axis=1)
