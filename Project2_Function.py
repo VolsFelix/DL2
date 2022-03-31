@@ -13,7 +13,7 @@ import tensorflow as tf
 from sklearn.model_selection import train_test_split
 from tensorflow import feature_column
 from tensorflow.keras import layers
-
+import warnings
 
 PRICING= pd.read_csv('pricing.csv')
 PRICING.head()
@@ -49,22 +49,19 @@ def get_kernel_initializer(activation_function, initializer_name):
         options: 'tanh', 'sigmoid', 'elu','relu','prelu', 'leaky relu'
     :return: either a string or a keras object for kernel_initializer parameter
     '''
+    # No activation function was called, so none is returned
     if activation_function is None:
         return None
-    if activation_function == 'tanh':
-        if initializer_name in ['glorot_uniform','glorot_normal']:
-            return initializer_name
-        else:
-            print('Not a valid combination of initializers and activation functions;\n'
-                  'No weight initializer will be used')
-            return None
-    elif activation_function == 'sigmoid':
-        if initializer_name in ['uniform', 'untruncated_normal']:
-            return keras.initializers.VarianceScaling(scale = 16., mode = 'fan_avg', distribution = initializer_name)
-        else:
-            print('Not a valid combination of initializers and activation functions;\n'
-                  'No weight initializer will be used')
-            return None
+
+    # tanh activation function weight initializers
+    if (activation_function == 'tanh') & (initializer_name in ['glorot_uniform','glorot_normal']):
+        return initializer_name
+
+    # sigmoid activation function weight initializers
+    elif (activation_function == 'sigmoid') & (initializer_name in ['uniform', 'untruncated_normal']):
+        return keras.initializers.VarianceScaling(scale = 16., mode = 'fan_avg', distribution = initializer_name)
+
+    # relu and friends activaiton function weight initializerss
     elif activation_function in ['elu','relu','prelu', 'leaky relu']:
         if initializer_name in ['he_normal', 'he_uniform']:
             return initializer_name
@@ -76,10 +73,13 @@ def get_kernel_initializer(activation_function, initializer_name):
             print('Not a valid combination of initializers and activation functions;\n'
                   'No weight initializer will be used')
             return None
-    else:
-        print('Not a valid activation function entry; No weight initializer will be used')
-        return None
 
+    # If given a bad combination or an incorrect activation function -- give warning
+    else:
+        warnings.warn('\n\nNot a valid combination of activation and initializers;\n'
+                      'Or not a valid activation function entry;\n'
+                      'No weight initializer will be used\n')
+        return None
 
 
 
