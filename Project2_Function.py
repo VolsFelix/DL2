@@ -13,7 +13,7 @@ import tensorflow as tf
 from sklearn.model_selection import train_test_split
 from tensorflow import feature_column
 from tensorflow.keras import layers
-import warnings
+from Model_Tuning import get_kernel_initializer, create_hidden
 
 PRICING= pd.read_csv('pricing.csv')
 PRICING.head()
@@ -31,10 +31,11 @@ PRICING["category"] = np.select(cond_list,choice_list)
 # Confirm
 print(checkConsecutive(np.unique(PRICING['category'])))
 
+
+
 ## splitting the data into test and train sets
 train, test = train_test_split(PRICING, test_size=0.2)
 train, val = train_test_split(train, test_size=0.2)
-
 
 
 #### Defining Functions to Use to build and tune model
@@ -42,12 +43,12 @@ train, val = train_test_split(train, test_size=0.2)
 def get_kernel_initializer(activation_function, initializer_name):
     '''
     :param initializer_name:
-        tanh options: 'glorot_uniform','glorot_normal'
-        sigmoid options: 'uniform', 'untruncated_normal'
-        relu and friends options: 'he_normal', 'he_uniform', 'he_avg_normal', 'he_avg_uniform'
+        - tanh options: 'glorot_uniform','glorot_normal'
+        - sigmoid options: 'uniform', 'untruncated_normal'
+        - relu and friends options: 'he_normal', 'he_uniform', 'he_avg_normal', 'he_avg_uniform'
     :param activation_function:
-        options: 'tanh', 'sigmoid', 'elu','relu','prelu', 'leaky relu'
-    :return: either a string or a keras object for kernel_initializer parameter
+        - options: 'tanh', 'sigmoid', 'elu','relu','prelu', 'leaky relu'
+    :return: a string or a keras object for kernel_initializer parameter
     '''
     # No activation function was called, so none is returned
     if activation_function is None:
@@ -84,24 +85,21 @@ def get_kernel_initializer(activation_function, initializer_name):
 
 
 ## Hidden Layers
-def create_hidden(nodes_list, activation_function, batch_norm = False, initializer_name = None):
+def create_hidden(inputs, nodes_list, activation_function, batch_norm = False, initializer_name = None):
     '''
     creates the hidden layers for the model
-    :param nodes_list: length indicates the number of layers created;
-     values indicate the number of hidden nodes per layer (in order)
+
+    :param inputs: input layer for first hidden node
+    :param nodes_list: number of nodes per hidden layer
     :param activation_function: string that indicates the activation function to be used
-         options: 'tanh', 'sigmoid', 'elu','relu','prelu', 'leaky relu'
     :param batch_norm: either True or False indicating whether or not to perform Batch Normalization (only does before activation)
     :param initializer_name:
-        tanh options: 'glorot_uniform','glorot_normal'
-        sigmoid options: 'uniform', 'untruncated_normal'
-        relu and friends options: 'he_normal', 'he_uniform', 'he_avg_normal', 'he_avg_uniform'
     '''
     # Initialize first hidden node
     kernel_initializer = get_kernel_initializer(activation_function, initializer_name)
 
     if batch_norm:
-        hidden = tf.keras.layers.Dense(nodes_list[1], kernel_initializer=kernel_initializer)(inputs_concat2)
+        hidden = tf.keras.layers.Dense(nodes_list[1], kernel_initializer=kernel_initializer)(inputs)
         BN = tf.keras.layers.BatchNormalization()(hidden)
         hiddenAct = tf.keras.layers.Activation('elu')(BN)
         if len(nodes_list) > 1:
@@ -111,11 +109,12 @@ def create_hidden(nodes_list, activation_function, batch_norm = False, initializ
                 hiddenAct = tf.keras.layers.Activation('elu')(BN)
         return hiddenAct
     else:
-        hidden = tf.keras.layers.Dense(nodes_list[1], kernel_initializer=kernel_initializer)(inputs_concat2)
+        hidden = tf.keras.layers.Dense(nodes_list[1], kernel_initializer=kernel_initializer)(inputs)
         if len(nodes_list) > 1:
             for i in range(len(nodes_list) - 1):
                 hidden = tf.keras.layers.Dense(nodes_list[i], kernel_initializer=kernel_initializer)(hidden)
         return hidden
+
 
 ## First step is to encode the categorical variables: category and SKU
 # embedding category
@@ -136,7 +135,8 @@ inputs_num = tf.keras.layers.Input(shape=(3,),name = 'in_num')
 #combinging the all input layers
 inputs_concat2 = tf.keras.layers.Concatenate(name = 'concatenation')([cats_concat, inputs_num])
 
-hidden = create_hidden(nodes_list = [20,10,11], activation_function = 'elu', batch_norm = True, initializer_name = 'he_normal')
+
+hidden = create_hidden(inputs_concat2, nodes_list = [20,10,11], activation_function = 'elu', batch_norm = True, initializer_name = 'he_normal')
 
 ## Output layer
 outputs = tf.keras.layers.Dense(1, name = 'out')(hidden)
