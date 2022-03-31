@@ -13,30 +13,6 @@ import tensorflow as tf
 from sklearn.model_selection import train_test_split
 from tensorflow import feature_column
 from tensorflow.keras import layers
-from Model_Tuning import get_kernel_initializer, create_hidden
-
-PRICING= pd.read_csv('pricing.csv')
-PRICING.head()
-
-# Check if the values are consecutively encoded:
-def checkConsecutive(l):
-    return sorted(l) == list(range(min(l), max(l) + 1))
-print(checkConsecutive(np.unique(PRICING['sku'])))
-print(checkConsecutive(np.unique(PRICING['category'])))
-
-# Change category to consecutive integer
-cond_list = [PRICING['category']<2, PRICING['category']>2, PRICING['category']==2]
-choice_list = [PRICING['category'], PRICING['category']-1, -1]
-PRICING["category"] = np.select(cond_list,choice_list)
-# Confirm
-print(checkConsecutive(np.unique(PRICING['category'])))
-
-
-
-## splitting the data into test and train sets
-train, test = train_test_split(PRICING, test_size=0.2)
-train, val = train_test_split(train, test_size=0.2)
-
 
 #### Defining Functions to Use to build and tune model
 ## kernel_initializer
@@ -116,13 +92,36 @@ def create_hidden(inputs, nodes_list, activation_function, batch_norm = False, i
         return hidden
 
 
+#### Reading and Cleaning
+PRICING= pd.read_csv('pricing.csv')
+PRICING.head()
+
+# Check if the values are consecutively encoded:
+def checkConsecutive(l):
+    return sorted(l) == list(range(min(l), max(l) + 1))
+print(checkConsecutive(np.unique(PRICING['sku'])))
+print(checkConsecutive(np.unique(PRICING['category'])))
+
+# Change category to consecutive integer
+cond_list = [PRICING['category']<2, PRICING['category']>2, PRICING['category']==2]
+choice_list = [PRICING['category'], PRICING['category']-1, -1]
+PRICING["category"] = np.select(cond_list,choice_list)
+print(checkConsecutive(np.unique(PRICING['category'])))
+
+
+## splitting the data into test and train sets
+train, test = train_test_split(PRICING, test_size=0.2)
+train, val = train_test_split(train, test_size=0.2)
+
+
+#### Embedding
 ## First step is to encode the categorical variables: category and SKU
-# embedding category
+# category
 inputs_cat = tf.keras.layers.Input(shape=(1,),name = 'in_cats')
 embedding_cat = tf.keras.layers.Embedding(input_dim=PRICING['category'].nunique()+1, output_dim=16, input_length=1,name = 'embedding_cat')(inputs_cat)
 embedding_flat_cat = tf.keras.layers.Flatten(name='flatten')(embedding_cat)
 
-# embedding the sku
+# sku
 inputs_sku = tf.keras.layers.Input(shape=(1,),name = 'in_sku')
 embedding_sku = tf.keras.layers.Embedding(input_dim=PRICING['sku'].nunique(), output_dim=100, input_length=1,name = 'embedding_sku')(inputs_sku)
 embedding_flat_sku = tf.keras.layers.Flatten(name='flatten2')(embedding_sku)
@@ -135,18 +134,18 @@ inputs_num = tf.keras.layers.Input(shape=(3,),name = 'in_num')
 #combinging the all input layers
 inputs_concat2 = tf.keras.layers.Concatenate(name = 'concatenation')([cats_concat, inputs_num])
 
-
+## Defining Hidden Layers
 hidden = create_hidden(inputs_concat2, nodes_list = [20,10,11], activation_function = 'elu', batch_norm = True, initializer_name = 'he_normal')
 
-## Output layer
+## Output layer/ Finalize Inputs
 outputs = tf.keras.layers.Dense(1, name = 'out')(hidden)
-
 inputs=[inputs_cat,inputs_sku,inputs_num]
 
-
+## Create Model
 model = tf.keras.Model(inputs = inputs, outputs = outputs)
 
 model.summary()
+
 model.compile(loss = 'mse', optimizer = tf.keras.optimizers.SGD(learning_rate = 0.01))
 
 
