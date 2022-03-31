@@ -39,32 +39,31 @@ train, val = train_test_split(train, test_size=0.2)
 
 #### Defining Functions to Use to build and tune model
 ## Hidden Layers
-def create_hidden(nodes_list, activation_function, BN = False, kernel_initializer = None):
+def create_hidden(nodes_list, activation_function, batch_norm = False, kernel_initializer = None):
     '''
     creates the hidden layers for the model
     nodes_list length indicates the number of layers created
     nodes_list values indicate the number of hidden nodes per layer (in order)
     activation_function is a string that indicates the activation function to be used
-    BN either True or False indicating whether or not to perform Batch Normalization (only does before activation)
+    batch_norm either True or False indicating whether or not to perform Batch Normalization (only does before activation)
     '''
     # Initialize first hidden node
-    hidden = tf.keras.layers.Dense(nodes_list[1], kernel_initializer = kernel_initializer)(inputs_concat2)
     if batch_norm:
+        hidden = tf.keras.layers.Dense(nodes_list[1], kernel_initializer=kernel_initializer)(inputs_concat2)
         BN = tf.keras.layers.BatchNormalization()(hidden)
         hiddenAct = tf.keras.layers.Activation('elu')(BN)
-    else:
-        hiddenAct = tf.keras.layers.Activation('elu')(hidden)
-
-    # loop through remaining hidden layers
-    if len(nodes_list) > 1:
-        for i in range(len(nodes_list)-1):
-            hidden = tf.keras.layers.Dense(nodes_list[i], kernel_initializer = kernel_initializer)(hiddenAct)
-            if batch_norm:
+        if len(nodes_list) > 1:
+            for i in range(len(nodes_list) - 1):
+                hidden = tf.keras.layers.Dense(nodes_list[i], kernel_initializer=kernel_initializer)(hiddenAct)
                 BN = tf.keras.layers.BatchNormalization()(hidden)
                 hiddenAct = tf.keras.layers.Activation('elu')(BN)
-            else:
-                hiddenAct = tf.keras.layers.Activation('elu')(hidden)
-    return hidden
+        return hiddenAct
+    else:
+        hidden = tf.keras.layers.Dense(nodes_list[1], kernel_initializer=kernel_initializer)(inputs_concat2)
+        if len(nodes_list) > 1:
+            for i in range(len(nodes_list) - 1):
+                hidden = tf.keras.layers.Dense(nodes_list[i], kernel_initializer=kernel_initializer)(hidden)
+        return hidden
 
 ## First step is to encode the categorical variables: category and SKU
 # embedding category
@@ -85,7 +84,7 @@ inputs_num = tf.keras.layers.Input(shape=(3,),name = 'in_num')
 #combinging the all input layers
 inputs_concat2 = tf.keras.layers.Concatenate(name = 'concatenation')([cats_concat, inputs_num])
 
-hidden = create_hidden(nodes_list = [20,10,11], activation_function = 'elu')
+hidden = create_hidden(nodes_list = [20,10,11], activation_function = 'elu', batch_norm = True)
 
 ## Output layer
 outputs = tf.keras.layers.Dense(1, name = 'out')(hidden)
