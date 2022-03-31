@@ -1,0 +1,224 @@
+#### Group 2 Deep Learning Project
+# The goal of this assignment is to gather experience on the sensitivity of the algorithm to different
+# kinds of tuning parameters: batch size, number of hidden layers, number hidden neurons, hidden
+# activation functions (sigmoid, tanh, relu, leaky relu, prelu, elu),
+# optimizers (plain SGD, momentum, nesterov, adagrad, rmsprop, adam, learning rate scheduling)
+
+# The goal is to predict quantity sold of a given product
+# as accurately as possible by tuning the learning procedure
+import keras.initializers.initializers_v2
+import pandas as pd
+import numpy as np
+import tensorflow as tf
+from sklearn.model_selection import train_test_split
+from tensorflow import feature_column
+from tensorflow.keras import layers
+from itertools import product
+
+#### Reading and Cleaning
+PRICING= pd.read_csv('pricing.csv')
+PRICING.head()
+
+# Check if the values are consecutively encoded:
+def checkConsecutive(l):
+    return sorted(l) == list(range(min(l), max(l) + 1))
+print(checkConsecutive(np.unique(PRICING['sku'])))
+print(checkConsecutive(np.unique(PRICING['category'])))
+
+# Change category to consecutive integer
+cond_list = [PRICING['category']<2, PRICING['category']>2, PRICING['category']==2]
+choice_list = [PRICING['category'], PRICING['category']-1, -1]
+PRICING["category"] = np.select(cond_list,choice_list)
+print(checkConsecutive(np.unique(PRICING['category'])))
+
+
+## splitting the data into test and train sets
+train, test = train_test_split(PRICING, test_size=0.2)
+train, val = train_test_split(train, test_size=0.2)
+
+## seperating the numerical features from rest of dataset
+num_features=train.drop(['sku'], axis=1)
+num_features=num_features.drop(['category'], axis=1)
+num_features=num_features.drop(['quantity'], axis=1)
+
+## creates an input dictionary for the model
+input_dict= {
+    'in_cats':train["category"],
+    "in_sku":train["sku"],
+    "in_num": num_features
+}
+
+
+
+#### Defining Functions to Use to build and tune model
+## kernel_initializer
+def get_kernel_initializer(activation_function, initializer_name):
+    '''
+    :param initializer_name:
+        - tanh options: 'glorot_uniform','glorot_normal'
+        - sigmoid options: 'uniform', 'untruncated_normal'
+        - relu and friends options: 'he_normal', 'he_uniform', 'he_avg_normal', 'he_avg_uniform'
+    :param activation_function:
+        - options: 'tanh', 'sigmoid', 'elu','relu','prelu', 'leaky relu'
+    :return: a string or a keras object for kernel_initializer parameter
+    '''
+    # No activation function was called, so none is returned
+    if initializer_name is None :
+        return None
+
+    # tanh activation function weight initializers
+    if (activation_function == 'tanh') & (initializer_name in ['glorot_uniform','glorot_normal']):
+        return initializer_name
+
+    # sigmoid activation function weight initializers
+    elif (activation_function == 'sigmoid') & (initializer_name in ['uniform', 'untruncated_normal']):
+        return keras.initializers.VarianceScaling(scale = 16., mode = 'fan_avg', distribution = initializer_name)
+
+    # relu and friends activaiton function weight initializerss
+    elif activation_function in ['elu','relu','prelu', 'leaky relu']:
+        if initializer_name in ['he_normal', 'he_uniform']:
+            return initializer_name
+        elif initializer_name == 'he_avg_normal':
+            return keras.initializers.VarianceScaling(scale = 2., mode = 'fan_avg', distribution = 'normal')
+        elif initializer_name == 'he_avg_uniform':
+            return keras.initializers.VarianceScaling(scale = 2., mode = 'fan_avg', distribution = 'uniform')
+        else:
+            print('Not a valid combination of initializers and activation functions;\n'
+                  'No weight initializer will be used')
+            return None
+
+    # If given a bad combination or an incorrect activation function -- give warning
+    else:
+        warnings.warn('\n\nNot a valid combination of activation and initializers;\n'
+                      'Or not a valid activation function entry;\n'
+                      'No weight initializer will be used\n')
+        return None
+
+
+
+## Hidden Layers
+def create_hidden(inputs, nodes_list, activation_function, batch_norm = False, initializer_name = None):
+    '''
+    creates the hidden layers for the model
+
+    :param inputs: input layer for first hidden node
+    :param nodes_list: number of nodes per hidden layer
+    :param activation_function: string that indicates the activation function to be used
+    :param batch_norm: either True or False indicating whether or not to perform Batch Normalization (only does before activation)
+    :param initializer_name:
+    '''
+    # Initialize first hidden node
+    kernel_initializer = get_kernel_initializer(activation_function, initializer_name)
+
+    if batch_norm:
+        hidden = tf.keras.layers.Dense(nodes_list[0], kernel_initializer=kernel_initializer)(inputs)
+        BN = tf.keras.layers.BatchNormalization()(hidden)
+        hiddenAct = tf.keras.layers.Activation('elu')(BN)
+        if len(nodes_list) > 1:
+            for i in range(len(nodes_list) - 1):
+                hidden = tf.keras.layers.Dense(nodes_list[i+1], kernel_initializer=kernel_initializer)(hiddenAct)
+                BN = tf.keras.layers.BatchNormalization()(hidden)
+                hiddenAct = tf.keras.layers.Activation('elu')(BN)
+        return hiddenAct
+    else:
+        hidden = tf.keras.layers.Dense(nodes_list[0], kernel_initializer=kernel_initializer)(inputs)
+        if len(nodes_list) > 1:
+            for i in range(len(nodes_list) - 1):
+                hidden = tf.keras.layers.Dense(nodes_list[i+1], kernel_initializer=kernel_initializer)(hidden)
+        return hidden
+
+## Optimizers
+def get_optimizer(learning_rate, optimizer_name = None):
+    '''
+    :param learning_rate:
+    :param optimizer_name: 'momentum','nesterov','RMSprop','Adam', 'learning rate scheduling', 'plain SGD'
+    :return: optimizer arg for model.compile
+    '''
+    if optimizer_name == 'momentum':
+        return tf.keras.optimizers.SGD(learning_rate = learning_rate, momentum = 0.9)
+    elif optimizer_name == 'nesterov':
+        return tf.keras.optimizers.SGD(learning_rate = learning_rate, momentum = 0.9, nesterov = True)
+    elif optimizer_name == 'adagrad':
+        return tf.keras.optimizers.Adagrad(learning_rate = learning_rate, initial_accumulator_value = 0.1, epsilon = 1e-07)
+    elif optimizer_name == 'RMSprop':
+        return tf.keras.optimizers.RMSprop(learning_rate = learning_rate, rho = 0.9, momentum = 0.0, epsilon = 1e-07)
+    elif optimizer_name == 'Adam':
+        return tf.keras.optimizers.Adam(learning_rate = learning_rate, beta_1 = 0.9, beta_2 = 0.99, epsilon = 1e-07)
+    elif optimizer_name == 'learning rate scheduling':
+        return tf.keras.optimizers.schedules.ExponentialDecay(learning_rate, 10000, 0.95)
+    elif optimizer_name == 'plain SGD':
+        return tf.keras.optimizers.SGD(learning_rate = learning_rate)
+
+## Creating model based on inputs
+def create_model(nodes_list, activation_function, batch_norm = False,
+                 initializer_name = None):
+    #### Embedding and Creating Layers
+    ## First step is to encode the categorical variables: category and SKU
+    # category
+    tf.keras.backend.clear_session()
+    inputs_cat = tf.keras.layers.Input(shape=(1,),name = 'in_cats')
+    embedding_cat = tf.keras.layers.Embedding(input_dim=PRICING['category'].nunique()+1, output_dim=16, input_length=1,name = 'embedding_cat')(inputs_cat)
+    embedding_flat_cat = tf.keras.layers.Flatten(name='flatten')(embedding_cat)
+
+    # sku
+    inputs_sku = tf.keras.layers.Input(shape=(1,),name = 'in_sku')
+    embedding_sku = tf.keras.layers.Embedding(input_dim=PRICING['sku'].nunique(), output_dim=200, input_length=1,name = 'embedding_sku')(inputs_sku)
+    embedding_flat_sku = tf.keras.layers.Flatten(name='flatten2')(embedding_sku)
+
+    ## Concatenation of all input layers
+    # combining the categorical embedding layers
+    cats_concat = tf.keras.layers.Concatenate(name = 'concatenation1')([embedding_flat_cat, embedding_flat_sku])
+    #input for the quantity, price,order, and duration
+    inputs_num = tf.keras.layers.Input(shape=(3,),name = 'in_num')
+    #combinging the all input layers
+    inputs_concat2 = tf.keras.layers.Concatenate(name = 'concatenation')([cats_concat, inputs_num])
+
+    ## Defining Hidden Layers
+    hidden = create_hidden(inputs_concat2, nodes_list = nodes_list, activation_function = activation_function,
+                           batch_norm = batch_norm, initializer_name = initializer_name)
+
+    ## Output layer/ Finalize Inputs
+    outputs = tf.keras.layers.Dense(1, name = 'out')(hidden)
+    inputs=[inputs_cat,inputs_sku,inputs_num]
+
+    #### Create Model
+    model = tf.keras.Model(inputs = inputs, outputs = outputs)
+
+    return model
+
+
+#### Training Model
+def expand_grid(dictionary):
+   return pd.DataFrame([row for row in product(*dictionary.values())],
+                       columns=dictionary.keys())
+
+dictionary = {'nodes_list': [[200,100,50]],
+              'activation_function': ["sigmoid","tanh","relu","leaky relu","prelu","elu"],
+              'learning_rate': [0.001,0.01,0.1],
+              'batch_norm': [True, False],
+              'initializer_name': ['glorot_uniform', 'glorot_normal', 'uniform', 'untruncated_normal', 'he_normal', 'he_uniform', 'he_avg_normal', 'he_avg_uniform'],
+              'optimizer_name':["plain SGD","momentum","nesterov","adagrad","RMSprop","Adam","learning rate scheduling"],
+              'epochs':[10],
+              'batch_size': [10, 30, 50] }
+grid = expand_grid(dictionary)
+
+# Remove incompatible combinations for weight initialization and activaiton functions
+grid = grid[-((grid['activation_function'] != 'tanh') & (grid['initializer_name'] == 'glorot_uniform'))]
+grid = grid[-((grid['activation_function'] != 'tanh') & (grid['initializer_name'] == 'glorot_normal'))]
+grid = grid[-((grid['activation_function'] != 'sigmoid') & (grid['initializer_name'] == 'uniform'))]
+grid = grid[-((grid['activation_function'] != 'sigmoid') & (grid['initializer_name'] == 'untruncated_normal'))]
+grid = grid[-((grid['activation_function'] == 'tanh') | (grid['activation_function'] == 'sigmoid'))]
+grid = grid.reset_index(drop = True)
+
+
+### If we want to do some sort of loop we can do it with these 6 lines and add some lines to save the information we want:
+grid_row = grid.loc[1]
+
+model = create_model(grid_row['nodes_list'], grid_row['activation_function'], batch_norm = grid_row['batch_norm'],
+                     initializer_name = grid_row['initializer_name'])
+model.summary()
+optimizer = get_optimizer(grid_row['learning_rate'], grid_row['optimizer_name'])
+model.compile(loss='mse', optimizer=optimizer)
+model_history = model.fit(x=input_dict, y=train['quantity'], batch_size=grid_row['batch_size'], epochs=grid_row['batch_size'])
+
+
