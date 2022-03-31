@@ -6,7 +6,7 @@
 
 # The goal is to predict quantity sold of a given product
 # as accurately as possible by tuning the learning procedure
-
+import keras.initializers.initializers_v2
 import pandas as pd
 import numpy as np
 import tensorflow as tf
@@ -38,16 +38,68 @@ train, val = train_test_split(train, test_size=0.2)
 
 
 #### Defining Functions to Use to build and tune model
+## kernel_initializer
+def get_kernel_initializer(activation_function, initializer_name):
+    '''
+    :param initializer_name:
+        tanh options: 'glorot_uniform','glorot_normal'
+        sigmoid options: 'uniform', 'untruncated_normal'
+        relu and friends options: 'he_normal', 'he_uniform', 'he_avg_normal', 'he_avg_uniform'
+    :param activation_function:
+        options: 'tanh', 'sigmoid', 'elu','relu','prelu', 'leaky relu'
+    :return: either a string or a keras object for kernel_initializer parameter
+    '''
+    if activation_function is None:
+        return None
+    if activation_function == 'tanh':
+        if initializer_name in ['glorot_uniform','glorot_normal']:
+            return initializer_name
+        else:
+            print('Not a valid combination of initializers and activation functions;\n'
+                  'No weight initializer will be used')
+            return None
+    elif activation_function == 'sigmoid':
+        if initializer_name in ['uniform', 'untruncated_normal']:
+            return keras.initializers.VarianceScaling(scale = 16., mode = 'fan_avg', distribution = initializer_name)
+        else:
+            print('Not a valid combination of initializers and activation functions;\n'
+                  'No weight initializer will be used')
+            return None
+    elif activation_function in ['elu','relu','prelu', 'leaky relu']:
+        if initializer_name in ['he_normal', 'he_uniform']:
+            return initializer_name
+        elif initializer_name == 'he_avg_normal':
+            return keras.initializers.VarianceScaling(scale = 2., mode = 'fan_avg', distribution = 'normal')
+        elif initializer_name == 'he_avg_uniform':
+            return keras.initializers.VarianceScaling(scale = 2., mode = 'fan_avg', distribution = 'uniform')
+        else:
+            print('Not a valid combination of initializers and activation functions;\n'
+                  'No weight initializer will be used')
+            return None
+    else:
+        print('Not a valid activation function entry; No weight initializer will be used')
+        return None
+
+
+
+
 ## Hidden Layers
-def create_hidden(nodes_list, activation_function, batch_norm = False, kernel_initializer = None):
+def create_hidden(nodes_list, activation_function, batch_norm = False, initializer_name = None):
     '''
     creates the hidden layers for the model
-    nodes_list length indicates the number of layers created
-    nodes_list values indicate the number of hidden nodes per layer (in order)
-    activation_function is a string that indicates the activation function to be used
-    batch_norm either True or False indicating whether or not to perform Batch Normalization (only does before activation)
+    :param nodes_list: length indicates the number of layers created;
+     values indicate the number of hidden nodes per layer (in order)
+    :param activation_function: string that indicates the activation function to be used
+         options: 'tanh', 'sigmoid', 'elu','relu','prelu', 'leaky relu'
+    :param batch_norm: either True or False indicating whether or not to perform Batch Normalization (only does before activation)
+    :param initializer_name:
+        tanh options: 'glorot_uniform','glorot_normal'
+        sigmoid options: 'uniform', 'untruncated_normal'
+        relu and friends options: 'he_normal', 'he_uniform', 'he_avg_normal', 'he_avg_uniform'
     '''
     # Initialize first hidden node
+    kernel_initializer = get_kernel_initializer(activation_function, initializer_name)
+
     if batch_norm:
         hidden = tf.keras.layers.Dense(nodes_list[1], kernel_initializer=kernel_initializer)(inputs_concat2)
         BN = tf.keras.layers.BatchNormalization()(hidden)
@@ -84,7 +136,7 @@ inputs_num = tf.keras.layers.Input(shape=(3,),name = 'in_num')
 #combinging the all input layers
 inputs_concat2 = tf.keras.layers.Concatenate(name = 'concatenation')([cats_concat, inputs_num])
 
-hidden = create_hidden(nodes_list = [20,10,11], activation_function = 'elu', batch_norm = True)
+hidden = create_hidden(nodes_list = [20,10,11], activation_function = 'elu', batch_norm = True, initializer_name = 'he_normal')
 
 ## Output layer
 outputs = tf.keras.layers.Dense(1, name = 'out')(hidden)
