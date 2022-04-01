@@ -152,17 +152,27 @@ def get_optimizer(learning_rate, optimizer_name = None):
 ## Creating model based on inputs
 def create_model(nodes_list, activation_function, batch_norm = False,
                  initializer_name = None):
+    '''
+    :param nodes_list:
+    :param activation_function:
+    :param batch_norm:
+    :param initializer_name:
+    :return: tf.keras model
+    '''
     #### Embedding and Creating Layers
     ## First step is to encode the categorical variables: category and SKU
     # category
+    output_cat = 16
+    output_sku = nodes_list[0]*2 - output_cat - 3
+
     tf.keras.backend.clear_session()
     inputs_cat = tf.keras.layers.Input(shape=(1,),name = 'in_cats')
-    embedding_cat = tf.keras.layers.Embedding(input_dim=PRICING['category'].nunique()+1, output_dim=16, input_length=1,name = 'embedding_cat')(inputs_cat)
+    embedding_cat = tf.keras.layers.Embedding(input_dim=PRICING['category'].nunique()+1, output_dim=output_cat, input_length=1,name = 'embedding_cat')(inputs_cat)
     embedding_flat_cat = tf.keras.layers.Flatten(name='flatten')(embedding_cat)
 
     # sku
     inputs_sku = tf.keras.layers.Input(shape=(1,),name = 'in_sku')
-    embedding_sku = tf.keras.layers.Embedding(input_dim=PRICING['sku'].nunique(), output_dim=200, input_length=1,name = 'embedding_sku')(inputs_sku)
+    embedding_sku = tf.keras.layers.Embedding(input_dim=PRICING['sku'].nunique(), output_dim=output_sku, input_length=1,name = 'embedding_sku')(inputs_sku)
     embedding_flat_sku = tf.keras.layers.Flatten(name='flatten2')(embedding_sku)
 
     ## Concatenation of all input layers
@@ -192,14 +202,14 @@ def expand_grid(dictionary):
    return pd.DataFrame([row for row in product(*dictionary.values())],
                        columns=dictionary.keys())
 
-dictionary = {'nodes_list': [[200,100,50]],
-              'activation_function': ["sigmoid","tanh","relu","leaky relu","prelu","elu"],
-              'learning_rate': [0.001,0.01,0.1],
+dictionary = {'nodes_list': [[200,100,50], [1000, 500, 250, 125, 75, 25], [10000, 5000, 2500, 1250, 750, 250, 100, 50]],
+              'activation_function': ["sigmoid","tanh","relu","elu"],
+              'learning_rate': [0.001, 0.01,0.1],
               'batch_norm': [True, False],
               'initializer_name': ['glorot_uniform', 'glorot_normal', 'uniform', 'untruncated_normal', 'he_normal', 'he_uniform', 'he_avg_normal', 'he_avg_uniform'],
-              'optimizer_name':["plain SGD","momentum","nesterov","adagrad","RMSprop","Adam","learning rate scheduling"],
-              'epochs':[10],
-              'batch_size': [10, 30, 50] }
+              'optimizer_name':["plain SGD","nesterov","RMSprop","Adam"],
+              'epochs':[2, 10],
+              'batch_size': [1, 25, 30, 28, 50] } # prioritize 28
 grid = expand_grid(dictionary)
 
 # Remove incompatible combinations for weight initialization and activaiton functions
@@ -216,17 +226,19 @@ grid = grid[-((grid['activation_function'] == 'sigmoid') & (grid['initializer_na
 grid = grid[-((grid['activation_function'] == 'sigmoid') & (grid['initializer_name'] == 'he_avg_normal'))]
 grid = grid[-((grid['activation_function'] == 'sigmoid') & (grid['initializer_name'] == 'he_avg_uniform'))]
 
+grid = grid[-((grid['batch_size'] == 1) & (grid['batch_norm'] == True))]
+
 grid = grid.reset_index(drop = True)
 
 
 ### If we want to do some sort of loop we can do it with these 6 lines and add some lines to save the information we want:
-grid_row = grid.loc[1]
+grid_row = grid.loc[5]
 
 model = create_model(grid_row['nodes_list'], grid_row['activation_function'], batch_norm = grid_row['batch_norm'],
                      initializer_name = grid_row['initializer_name'])
 model.summary()
 optimizer = get_optimizer(grid_row['learning_rate'], grid_row['optimizer_name'])
 model.compile(loss='mse', optimizer=optimizer)
-model_history = model.fit(x=input_dict, y=train['quantity'], batch_size=grid_row['batch_size'], epochs=grid_row['batch_size'])
+model_history = model.fit(x=input_dict, y=train['quantity'], batch_size=grid_row['batch_size'], epochs=grid_row['epochs'])
 
-
+# if get Nan for loss, use gradient clipping
