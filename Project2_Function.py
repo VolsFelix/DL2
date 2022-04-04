@@ -15,6 +15,7 @@ from sklearn.model_selection import train_test_split
 from tensorflow import feature_column
 from tensorflow.keras import layers
 from itertools import product
+import csv
 
 #### Reading and Cleaning
 PRICING= pd.read_csv('pricing.csv')
@@ -188,7 +189,7 @@ def expand_grid(dictionary):
    return pd.DataFrame([row for row in product(*dictionary.values())],
                        columns=dictionary.keys())
 
-
+# Creating a a grid with combinations we might like to try
 dictionary = {'nodes_list': [[200,100,50], [1000, 500, 250, 125, 75, 25], [10000, 5000, 2500, 1250, 750, 250, 100, 50]],
               'activation_function': ["sigmoid","tanh","relu","elu"],
               'learning_rate': [0.001, 0.01,0.1],
@@ -237,10 +238,22 @@ input_dict= {
     "in_num": num_features
 }
 
+def write_dict(dict, name):
+    '''
+    to save model grid row characteristics for models
+    :param dict:
+    :param name:
+    :return:
+    '''
+    w = csv.writer(open(name, "w"))
+    for key, val in dict.items():
+        w.writerow([key, val])
+
 # how many random models to try and save
 n_random = 1
 random_rows = [random.randint(0, len(grid) - 1) for i in range(n_random)]
 histories = []
+# Run and fit the randomly selected models
 for i in random_rows:
     model_name = 'model_' + str(i)
     print('running', model_name)
@@ -254,5 +267,24 @@ for i in random_rows:
 
     model_history = model.fit(x=input_dict, y=train['quantity'], batch_size=grid_row['batch_size'], epochs=grid_row['epochs'])
     histories.append(model_history)
-    model.save(str(model_name) + '_1.h5')
-    write.csv(grid_row, str(model_name) + '_1.csv')
+
+    # Save results
+    model.save('/models/' + str(model_name) + '_1.h5')
+    write_dict(grid_row, name='models/' + str(model_name) + '_1.csv')
+
+# Print Model Results
+for i in range(len(histories)):
+    print('model_' + str(i) + ':\n' +
+          str(grid.loc[random_rows[i]]) + '\n' +
+          str(histories[i].history))
+
+
+## Intuitive Selection
+grid_row = grid[1000]
+model = create_model(grid_row['nodes_list'], grid_row['activation_function'], batch_norm = grid_row['batch_norm'],
+                     initializer_name = grid_row['initializer_name'])
+
+optimizer = get_optimizer(grid_row['learning_rate'], grid_row['optimizer_name'])
+model.compile(loss='mse', optimizer=optimizer)
+
+model_history = model.fit(x=input_dict, y=train['quantity'], batch_size=grid_row['batch_size'], epochs=grid_row['epochs'])
