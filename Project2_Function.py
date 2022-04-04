@@ -135,19 +135,19 @@ def get_optimizer(learning_rate, optimizer_name = None):
     :return: optimizer arg for model.compile
     '''
     if optimizer_name == 'momentum':
-        return tf.keras.optimizers.SGD(learning_rate = learning_rate, momentum = 0.9)
+        return tf.keras.optimizers.SGD(learning_rate = learning_rate, momentum = 0.9, clip_norm = 1.0)
     elif optimizer_name == 'nesterov':
-        return tf.keras.optimizers.SGD(learning_rate = learning_rate, momentum = 0.9, nesterov = True)
+        return tf.keras.optimizers.SGD(learning_rate = learning_rate, momentum = 0.9, nesterov = True, clip_norm = 1.0)
     elif optimizer_name == 'adagrad':
-        return tf.keras.optimizers.Adagrad(learning_rate = learning_rate, initial_accumulator_value = 0.1, epsilon = 1e-07)
+        return tf.keras.optimizers.Adagrad(learning_rate = learning_rate, initial_accumulator_value = 0.1, epsilon = 1e-07, clip_norm = 1.0)
     elif optimizer_name == 'RMSprop':
-        return tf.keras.optimizers.RMSprop(learning_rate = learning_rate, rho = 0.9, momentum = 0.0, epsilon = 1e-07)
+        return tf.keras.optimizers.RMSprop(learning_rate = learning_rate, rho = 0.9, momentum = 0.0, epsilon = 1e-07, clip_norm = 1.0)
     elif optimizer_name == 'Adam':
-        return tf.keras.optimizers.Adam(learning_rate = learning_rate, beta_1 = 0.9, beta_2 = 0.99, epsilon = 1e-07)
+        return tf.keras.optimizers.Adam(learning_rate = learning_rate, beta_1 = 0.9, beta_2 = 0.99, epsilon = 1e-07, clip_norm = 1.0)
     elif optimizer_name == 'learning rate scheduling':
-        return tf.keras.optimizers.schedules.ExponentialDecay(learning_rate, 10000, 0.95)
+        return tf.keras.optimizers.schedules.ExponentialDecay(learning_rate, 10000, 0.95, clip_norm = 1.0)
     elif optimizer_name == 'plain SGD':
-        return tf.keras.optimizers.SGD(learning_rate = learning_rate)
+        return tf.keras.optimizers.SGD(learning_rate = learning_rate, clip_norm = 1.0)
 
 ## Creating model based on inputs
 def create_model(nodes_list, activation_function, batch_norm = False,
