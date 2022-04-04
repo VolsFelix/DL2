@@ -115,7 +115,7 @@ def create_hidden(inputs, nodes_list, activation_function, batch_norm = False, i
 ## Optimizers
 def get_optimizer(learning_rate, optimizer_name = None):
     '''
-    :param learning_rate:
+    :param learning_rate: learning rate
     :param optimizer_name: 'momentum','nesterov','RMSprop','Adam', 'learning rate scheduling', 'plain SGD'
     :return: optimizer arg for model.compile
     '''
@@ -254,5 +254,5 @@ for i in random_rows:
 
     model_history = model.fit(x=input_dict, y=train['quantity'], batch_size=grid_row['batch_size'], epochs=grid_row['epochs'])
     histories.append(model_history)
-    model.save(str(model_name) + '.h5')
-
+    model.save(str(model_name) + '_1.h5')
+    write.csv(grid_row, str(model_name) + '_1.csv')
