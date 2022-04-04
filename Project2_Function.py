@@ -120,19 +120,19 @@ def get_optimizer(learning_rate, optimizer_name = None):
     :return: optimizer arg for model.compile
     '''
     if optimizer_name == 'momentum':
-        return tf.keras.optimizers.SGD(learning_rate = learning_rate, momentum = 0.9, clip_norm = 1.0)
+        return tf.keras.optimizers.SGD(learning_rate = learning_rate, momentum = 0.9, clipnorm = 1.0)
     elif optimizer_name == 'nesterov':
-        return tf.keras.optimizers.SGD(learning_rate = learning_rate, momentum = 0.9, nesterov = True, clip_norm = 1.0)
+        return tf.keras.optimizers.SGD(learning_rate = learning_rate, momentum = 0.9, nesterov = True, clipnorm = 1.0)
     elif optimizer_name == 'adagrad':
-        return tf.keras.optimizers.Adagrad(learning_rate = learning_rate, initial_accumulator_value = 0.1, epsilon = 1e-07, clip_norm = 1.0)
+        return tf.keras.optimizers.Adagrad(learning_rate = learning_rate, initial_accumulator_value = 0.1, epsilon = 1e-07, clipnorm = 1.0)
     elif optimizer_name == 'RMSprop':
-        return tf.keras.optimizers.RMSprop(learning_rate = learning_rate, rho = 0.9, momentum = 0.0, epsilon = 1e-07, clip_norm = 1.0)
+        return tf.keras.optimizers.RMSprop(learning_rate = learning_rate, rho = 0.9, momentum = 0.0, epsilon = 1e-07, clipnorm = 1.0)
     elif optimizer_name == 'Adam':
-        return tf.keras.optimizers.Adam(learning_rate = learning_rate, beta_1 = 0.9, beta_2 = 0.99, epsilon = 1e-07, clip_norm = 1.0)
+        return tf.keras.optimizers.Adam(learning_rate = learning_rate, beta_1 = 0.9, beta_2 = 0.99, epsilon = 1e-07, clipnorm = 1.0)
     elif optimizer_name == 'learning rate scheduling':
-        return tf.keras.optimizers.schedules.ExponentialDecay(learning_rate, 10000, 0.95, clip_norm = 1.0)
+        return tf.keras.optimizers.schedules.ExponentialDecay(learning_rate, 10000, 0.95, clipnorm = 1.0)
     elif optimizer_name == 'plain SGD':
-        return tf.keras.optimizers.SGD(learning_rate = learning_rate, clip_norm = 1.0)
+        return tf.keras.optimizers.SGD(learning_rate = learning_rate, clipnorm = 1.0)
 
 
 ## Creating model based on inputs
@@ -237,14 +237,15 @@ input_dict= {
     "in_num": num_features
 }
 
-random_rows = [random.randint(0, len(grid) - 1) for i in range(1)]
+# how many random models to try and save
+n_random = 1
+random_rows = [random.randint(0, len(grid) - 1) for i in range(n_random)]
 histories = []
-
 for i in random_rows:
     model_name = 'model_' + str(i)
     print('running', model_name)
-
     grid_row = grid.loc[i]
+    print('\n', grid_row)
     model = create_model(grid_row['nodes_list'], grid_row['activation_function'], batch_norm = grid_row['batch_norm'],
                          initializer_name = grid_row['initializer_name'])
 
@@ -253,5 +254,5 @@ for i in random_rows:
 
     model_history = model.fit(x=input_dict, y=train['quantity'], batch_size=grid_row['batch_size'], epochs=grid_row['epochs'])
     histories.append(model_history)
-    mode.save(str(model_name) + '.h5')
+    model.save(str(model_name) + '.h5')
 
