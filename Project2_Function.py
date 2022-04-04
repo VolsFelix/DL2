@@ -9,6 +9,7 @@
 import keras.initializers.initializers_v2
 import pandas as pd
 import numpy as np
+import random
 import tensorflow as tf
 from sklearn.model_selection import train_test_split
 from tensorflow import feature_column
@@ -21,7 +22,7 @@ PRICING.head()
 
 # Check if the values are consecutively encoded:
 def checkConsecutive(l):
-    return sorted(l) == list(range(min(l), max(l) + 1))
+    return (sorted(l) == list(range(min(l), max(l) + 1)))
 print(checkConsecutive(np.unique(PRICING['sku'])))
 print(checkConsecutive(np.unique(PRICING['category'])))
 
@@ -31,24 +32,8 @@ choice_list = [PRICING['category'], PRICING['category']-1, -1]
 PRICING["category"] = np.select(cond_list,choice_list)
 print(checkConsecutive(np.unique(PRICING['category'])))
 
-
-## splitting the data into test and train sets
-train, test = train_test_split(PRICING, test_size=0.2)
-train, val = train_test_split(train, test_size=0.2)
-
-## seperating the numerical features from rest of dataset
-num_features=train.drop(['sku'], axis=1)
-num_features=num_features.drop(['category'], axis=1)
-num_features=num_features.drop(['quantity'], axis=1)
-
-## creates an input dictionary for the model
-input_dict= {
-    'in_cats':train["category"],
-    "in_sku":train["sku"],
-    "in_num": num_features
-}
-
-
+n_unique_cats = PRICING['category'].nunique()
+n_unique_skus = PRICING['sku'].nunique()
 
 #### Defining Functions to Use to build and tune model
 ## kernel_initializer
@@ -95,7 +80,6 @@ def get_kernel_initializer(activation_function, initializer_name):
         return None
 
 
-
 ## Hidden Layers
 def create_hidden(inputs, nodes_list, activation_function, batch_norm = False, initializer_name = None):
     '''
@@ -127,6 +111,7 @@ def create_hidden(inputs, nodes_list, activation_function, batch_norm = False, i
                 hidden = tf.keras.layers.Dense(nodes_list[i+1], kernel_initializer=kernel_initializer)(hidden)
         return hidden
 
+
 ## Optimizers
 def get_optimizer(learning_rate, optimizer_name = None):
     '''
@@ -149,6 +134,7 @@ def get_optimizer(learning_rate, optimizer_name = None):
     elif optimizer_name == 'plain SGD':
         return tf.keras.optimizers.SGD(learning_rate = learning_rate, clip_norm = 1.0)
 
+
 ## Creating model based on inputs
 def create_model(nodes_list, activation_function, batch_norm = False,
                  initializer_name = None):
@@ -167,12 +153,12 @@ def create_model(nodes_list, activation_function, batch_norm = False,
 
     tf.keras.backend.clear_session()
     inputs_cat = tf.keras.layers.Input(shape=(1,),name = 'in_cats')
-    embedding_cat = tf.keras.layers.Embedding(input_dim=PRICING['category'].nunique()+1, output_dim=output_cat, input_length=1,name = 'embedding_cat')(inputs_cat)
+    embedding_cat = tf.keras.layers.Embedding(input_dim=n_unique_cats+1, output_dim=output_cat, input_length=1,name = 'embedding_cat')(inputs_cat)
     embedding_flat_cat = tf.keras.layers.Flatten(name='flatten')(embedding_cat)
 
     # sku
     inputs_sku = tf.keras.layers.Input(shape=(1,),name = 'in_sku')
-    embedding_sku = tf.keras.layers.Embedding(input_dim=PRICING['sku'].nunique(), output_dim=output_sku, input_length=1,name = 'embedding_sku')(inputs_sku)
+    embedding_sku = tf.keras.layers.Embedding(input_dim=n_unique_skus, output_dim=output_sku, input_length=1,name = 'embedding_sku')(inputs_sku)
     embedding_flat_sku = tf.keras.layers.Flatten(name='flatten2')(embedding_sku)
 
     ## Concatenation of all input layers
@@ -201,6 +187,7 @@ def create_model(nodes_list, activation_function, batch_norm = False,
 def expand_grid(dictionary):
    return pd.DataFrame([row for row in product(*dictionary.values())],
                        columns=dictionary.keys())
+
 
 dictionary = {'nodes_list': [[200,100,50], [1000, 500, 250, 125, 75, 25], [10000, 5000, 2500, 1250, 750, 250, 100, 50]],
               'activation_function': ["sigmoid","tanh","relu","elu"],
@@ -232,13 +219,39 @@ grid = grid.reset_index(drop = True)
 
 
 ### If we want to do some sort of loop we can do it with these 6 lines and add some lines to save the information we want:
-grid_row = grid.loc[5]
+## splitting the data into test and train sets
+# train, test = train_test_split(PRICING, test_size=0.2)
+# train, val = train_test_split(train, test_size=0.2)
+del(PRICING)
+train =  pd.read_csv("train.csv")
 
-model = create_model(grid_row['nodes_list'], grid_row['activation_function'], batch_norm = grid_row['batch_norm'],
-                     initializer_name = grid_row['initializer_name'])
-model.summary()
-optimizer = get_optimizer(grid_row['learning_rate'], grid_row['optimizer_name'])
-model.compile(loss='mse', optimizer=optimizer)
-model_history = model.fit(x=input_dict, y=train['quantity'], batch_size=grid_row['batch_size'], epochs=grid_row['epochs'])
+## seperating the numerical features from rest of dataset
+num_features=train.drop(['sku'], axis=1)
+num_features=num_features.drop(['cat_consec'], axis=1)
+num_features=num_features.drop(['quantity'], axis=1)
 
-# if get Nan for loss, use gradient clipping
+## creates an input dictionary for the model
+input_dict= {
+    'in_cats':train["cat_consec"],
+    "in_sku":train["sku"],
+    "in_num": num_features
+}
+
+random_rows = [random.randint(0, len(grid) - 1) for i in range(1)]
+histories = []
+
+for i in random_rows:
+    model_name = 'model_' + str(i)
+    print('running', model_name)
+
+    grid_row = grid.loc[i]
+    model = create_model(grid_row['nodes_list'], grid_row['activation_function'], batch_norm = grid_row['batch_norm'],
+                         initializer_name = grid_row['initializer_name'])
+
+    optimizer = get_optimizer(grid_row['learning_rate'], grid_row['optimizer_name'])
+    model.compile(loss='mse', optimizer=optimizer)
+
+    model_history = model.fit(x=input_dict, y=train['quantity'], batch_size=grid_row['batch_size'], epochs=grid_row['epochs'])
+    histories.append(model_history)
+    mode.save(str(model_name) + '.h5')
+
