@@ -276,12 +276,12 @@ for i in random_rows:
     histories.append(model_history)
 
     # Save results
-    model.save('/models/' + str(model_name) + '_1.h5')
+    model.save('models/' + str(model_name) + '_1.h5')
     write_dict(grid_row, name='models/' + str(model_name) + '_1.csv')
 
 # Print Model Results
 for i in range(len(histories)):
-    print('model_' + str(i) + ':\n' +
+    print('model_' + str(random_rows[i]) + ':\n' +
           str(grid.loc[random_rows[i]]) + '\n' +
           str(histories[i].history))
 
