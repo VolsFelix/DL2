@@ -225,18 +225,22 @@ grid = grid.reset_index(drop = True)
 # train, val = train_test_split(train, test_size=0.2)
 del(PRICING)
 train =  pd.read_csv("train.csv")
+test =  pd.read_csv("test.csv")
+val =  pd.read_csv("val.csv")
 
-## seperating the numerical features from rest of dataset
-num_features=train.drop(['sku'], axis=1)
-num_features=num_features.drop(['cat_consec'], axis=1)
-num_features=num_features.drop(['quantity'], axis=1)
+def get_input_dict(data):
+    ## seperating the numerical features from rest of dataset
+    num_features=data.drop(['sku'], axis=1)
+    num_features=data.drop(['cat_consec'], axis=1)
+    num_features=data.drop(['quantity'], axis=1)
 
-## creates an input dictionary for the model
-input_dict= {
-    'in_cats':train["cat_consec"],
-    "in_sku":train["sku"],
-    "in_num": num_features
-}
+    ## creates an input dictionary for the model
+    input_dict= {
+        'in_cats':data["cat_consec"],
+        "in_sku":data["sku"],
+        "in_num": num_features
+    }
+    return input_dict
 
 def write_dict(dict, name):
     '''
@@ -254,6 +258,8 @@ n_random = 1
 random_rows = [random.randint(0, len(grid) - 1) for i in range(n_random)]
 histories = []
 # Run and fit the randomly selected models
+input_dict_train = get_input_dict(train)
+input_dict_val = get_input_dict(val)
 for i in random_rows:
     model_name = 'model_' + str(i)
     print('running', model_name)
@@ -265,7 +271,8 @@ for i in random_rows:
     optimizer = get_optimizer(grid_row['learning_rate'], grid_row['optimizer_name'])
     model.compile(loss='mse', optimizer=optimizer)
 
-    model_history = model.fit(x=input_dict, y=train['quantity'], batch_size=grid_row['batch_size'], epochs=grid_row['epochs'])
+    model_history = model.fit(x=input_dict_train, y=train['quantity'], batch_size=grid_row['batch_size'],
+                              epochs=grid_row['epochs'], validation_data = (input_dict_val, val['quantity']))
     histories.append(model_history)
 
     # Save results
