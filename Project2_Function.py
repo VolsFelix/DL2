@@ -190,7 +190,7 @@ def expand_grid(dictionary):
                        columns=dictionary.keys())
 
 # Creating a a grid with combinations we might like to try
-dictionary = {'nodes_list': [[200,100,50], [1000, 500, 250, 125, 75, 25], [10000, 5000, 2500, 1250, 750, 250, 100, 50]],
+dictionary = {'nodes_list': [[200,100,50], [1000, 500, 250, 125, 75, 25], [5000, 2500, 1250, 750, 250, 100, 50]],
               'activation_function': ["sigmoid","tanh","relu","elu"],
               'learning_rate': [0.001, 0.01,0.1],
               'batch_norm': [True, False],
@@ -231,8 +231,8 @@ val =  pd.read_csv("val.csv")
 def get_input_dict(data):
     ## seperating the numerical features from rest of dataset
     num_features=data.drop(['sku'], axis=1)
-    num_features=data.drop(['cat_consec'], axis=1)
-    num_features=data.drop(['quantity'], axis=1)
+    num_features=num_features.drop(['cat_consec'], axis=1)
+    num_features=num_features.drop(['quantity'], axis=1)
 
     ## creates an input dictionary for the model
     input_dict= {
