@@ -150,7 +150,8 @@ def create_model(nodes_list, activation_function, batch_norm = False,
     ## First step is to encode the categorical variables: category and SKU
     # category
     output_cat = 16
-    output_sku = nodes_list[0]*2 - output_cat - 3
+    output_sku = 50
+    # nodes_list[0]*2 - output_cat - 3
 
     tf.keras.backend.clear_session()
     inputs_cat = tf.keras.layers.Input(shape=(1,),name = 'in_cats')
@@ -253,6 +254,25 @@ def write_dict(dict, name):
     for key, val in dict.items():
         w.writerow([key, val])
 
+
+## Intuitive Selection
+input_dict_train = get_input_dict(train)
+input_dict_val = get_input_dict(val)
+model = create_model(nodes_list = [30,15,6], activation_function='elu', batch_norm = False,
+                     initializer_name = 'he_avg_uniform')
+
+optimizer = get_optimizer(0.01, 'Adam')
+model.compile(loss='mse', optimizer=optimizer)
+
+import time
+start = time.time()
+model_history = model.fit(x=input_dict_train, y=train['quantity'], batch_size=50, epochs=1, validation_data = (input_dict_val,val['quantity']))
+total_time = time.time()-start
+print(total_time)
+
+model.summary()
+
+
 # how many random models to try and save
 n_random = 1
 random_rows = [random.randint(0, len(grid) - 1) for i in range(n_random)]
@@ -284,14 +304,3 @@ for i in range(len(histories)):
     print('model_' + str(random_rows[i]) + ':\n' +
           str(grid.loc[random_rows[i]]) + '\n' +
           str(histories[i].history))
-
-
-## Intuitive Selection
-grid_row = grid[1000]
-model = create_model(grid_row['nodes_list'], grid_row['activation_function'], batch_norm = grid_row['batch_norm'],
-                     initializer_name = grid_row['initializer_name'])
-
-optimizer = get_optimizer(grid_row['learning_rate'], grid_row['optimizer_name'])
-model.compile(loss='mse', optimizer=optimizer)
-
-model_history = model.fit(x=input_dict, y=train['quantity'], batch_size=grid_row['batch_size'], epochs=grid_row['epochs'])
