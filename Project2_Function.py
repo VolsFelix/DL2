@@ -256,21 +256,21 @@ def write_dict(dict, name):
 
 
 ## Intuitive Selection
-input_dict_train = get_input_dict(train)
-input_dict_val = get_input_dict(val)
-model = create_model(nodes_list = [30,15,6], activation_function='elu', batch_norm = False,
-                     initializer_name = 'he_avg_uniform')
+# input_dict_train = get_input_dict(train)
+# input_dict_val = get_input_dict(val)
+# model = create_model(nodes_list = [30,15,6], activation_function='elu', batch_norm = False,
+#                      initializer_name = 'he_avg_uniform')
 
-optimizer = get_optimizer(0.01, 'Adam')
-model.compile(loss='mse', optimizer=optimizer)
+# optimizer = get_optimizer(0.01, 'Adam')
+# model.compile(loss='mse', optimizer=optimizer)
 
-import time
-start = time.time()
-model_history = model.fit(x=input_dict_train, y=train['quantity'], batch_size=50, epochs=1, validation_data = (input_dict_val,val['quantity']))
-total_time = time.time()-start
-print(total_time)
+# import time
+# start = time.time()
+# model_history = model.fit(x=input_dict_train, y=train['quantity'], batch_size=50, epochs=1, validation_data = (input_dict_val,val['quantity']))
+# total_time = time.time()-start
+# print(total_time)
 
-model.summary()
+# model.summary()
 
 
 # how many random models to try and save
@@ -291,12 +291,22 @@ for i in random_rows:
     optimizer = get_optimizer(grid_row['learning_rate'], grid_row['optimizer_name'])
     model.compile(loss='mse', optimizer=optimizer)
 
+# saving the best weights for the selected model
+    checkpoint_cb=tf.keras.callbacks.ModelCheckpoint(
+    filepath='models/' + str(model_name) + '_1.h5',
+    save_freq=  'epoch',
+    save_best_only=True)
+
+# stopping the training if the validation loss does not improve for 2 epochs
+    early_stopping_cb=tf.keras.callbacks.EarlyStopping(patience=2,restore_best_weights=True)
+
+# might need to fix batch size to a higher amount if the training is taking too long
     model_history = model.fit(x=input_dict_train, y=train['quantity'], batch_size=grid_row['batch_size'],
-                              epochs=grid_row['epochs'], validation_data = (input_dict_val, val['quantity']))
+                              epochs=grid_row['epochs'], validation_data = (input_dict_val, val['quantity']),callbacks=[checkpoint_cb,early_stopping_cb])
     histories.append(model_history)
 
     # Save results
-    model.save('models/' + str(model_name) + '_1.h5')
+    #model.save('models/' + str(model_name) + '_1.h5')
     write_dict(grid_row, name='models/' + str(model_name) + '_1.csv')
 
 # Print Model Results
@@ -304,3 +314,17 @@ for i in range(len(histories)):
     print('model_' + str(random_rows[i]) + ':\n' +
           str(grid.loc[random_rows[i]]) + '\n' +
           str(histories[i].history))
+
+
+
+
+#### NOTES#######
+# Because of early stopping, no need to try out different epoch sizes. 
+# An example is that setting the epochs to 10, early stopping might stop the training after 5 epochs.
+
+
+# Training is extremely slow with a small batch size
+
+
+# The best model is the one with the lowest validation loss. Need to compare validation loss between models. 
+# If a certain activation function has higher validation loss than the minumum after a couple tries, drop that activation function from the grid
