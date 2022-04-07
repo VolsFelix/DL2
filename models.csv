@@ -1,4 +1,4 @@
 ﻿model,nodes_list,hidden_layers,activation_function,learning_rate,batch_norm,initializer_name,optimizer_name,batch_size,min_val_loss,epochs,train_time
 model_2885,"[1000, 500, 250, 125, 75, 25]",,sigmoid,0.1,TRUE,uniform,plain SGD,30,1063.710205,10,
 model_2794,"[1000, 500, 250, 125, 75, 25]",,sigmoid,0.01,TRUE,untruncated_normal,Adam,28,1075.99353,2,67.42973542
-model_1046,"[200, 100, 50]",3,elu,0.01,True,he_avg_normal,nesterov,28,1340.802978515625,7,189.3708200454712
+model_1046,"[200, 100, 50]",3,elu,0.01,TRUE,he_avg_normal,nesterov,28,1340.802979,7,189.37082
