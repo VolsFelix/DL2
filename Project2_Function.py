@@ -32,10 +32,18 @@ print(checkConsecutive(np.unique(PRICING['sku'])))
 print(checkConsecutive(np.unique(PRICING['category'])))
 
 # Change category to consecutive integer
-cond_list = [PRICING['category']<2, PRICING['category']>2, PRICING['category']==2]
-choice_list = [PRICING['category'], PRICING['category']-1, -1]
-PRICING["category"] = np.select(cond_list,choice_list)
+# cond_list = [PRICING['category']<2, PRICING['category']>2, PRICING['category']==2]
+# choice_list = [PRICING['category'], PRICING['category']-1, -1]
+# PRICING["category"] = np.select(cond_list,choice_list)
+# print(checkConsecutive(np.unique(PRICING['category'])))
+
+PRICING['category'] = pd.Categorical(PRICING['category'])
+PRICING['category'] = PRICING['category'].cat.codes
 print(checkConsecutive(np.unique(PRICING['category'])))
+
+PRICING['sku'] = pd.Categorical(PRICING['sku'])
+PRICING['sku'] = PRICING['sku'].cat.codes
+print(checkConsecutive(np.unique(PRICING['sku'])))
 
 n_unique_cats = PRICING['category'].nunique()
 n_unique_skus = PRICING['sku'].nunique()
@@ -153,8 +161,8 @@ def create_model(nodes_list, activation_function, batch_norm = False,
     #### Embedding and Creating Layers
     ## First step is to encode the categorical variables: category and SKU
     # category
-    output_cat = round(.7*n_unique_cats)
-    output_sku = round(.7*n_unique_skus)
+    output_cat = 50
+    output_sku = 16
     # nodes_list[0]*2 - output_cat - 3
 
     tf.keras.backend.clear_session()
@@ -202,7 +210,8 @@ dictionary = {'nodes_list': [[1000, 500, 250, 125, 75, 25], [5000, 2500, 1250, 7
               'initializer_name': ['glorot_uniform', 'glorot_normal', 'uniform', 'untruncated_normal', 'he_normal', 'he_uniform', 'he_avg_normal', 'he_avg_uniform'],
               'optimizer_name':["plain SGD","nesterov","RMSprop","Adam"],
               'epochs':[100],
-              'batch_size': [1, 28, 50] } # prioritize 28
+              'batch_size': [1, 28, 50],
+              'clipnorm': [True]} # prioritize 28
 grid = expand_grid(dictionary)
 
 # Remove incompatible combinations for weight initialization and activaiton functions
@@ -236,33 +245,34 @@ del(PRICING)
 def get_input_dict(data):
     ## seperating the numerical features from rest of dataset
     num_features=data.drop(['sku'], axis=1)
-    num_features=num_features.drop(['cat_consec'], axis=1)
+    num_features=num_features.drop(['category'], axis=1)
     num_features=num_features.drop(['quantity'], axis=1)
 
     ## creates an input dictionary for the model
     input_dict= {
-        'in_cats':data["cat_consec"],
+        'in_cats':data["category"],
         "in_sku":data["sku"],
         "in_num": num_features
     }
     return input_dict
 
 ## Intuitive Selection
-# input_dict_train = get_input_dict(train)
-# input_dict_val = get_input_dict(val)
-# model = create_model(nodes_list = [30,15,6], activation_function='elu', batch_norm = False,
-#                      initializer_name = 'he_avg_uniform')
+input_dict_train = get_input_dict(train)
+input_dict_val = get_input_dict(val)
 
-# optimizer = get_optimizer(0.01, 'Adam')
-# model.compile(loss='mse', optimizer=optimizer)
+model = create_model(nodes_list = [1000, 500, 250, 125, 75, 25], activation_function='elu', batch_norm = True,
+                     initializer_name = 'he_avg_uniform')
+optimizer = get_optimizer(0.01, 'Adam')
+model.compile(loss='mse', optimizer=optimizer)
 
-# import time
-# start = time.time()
-# model_history = model.fit(x=input_dict_train, y=train['quantity'], batch_size=50, epochs=1, validation_data = (input_dict_val,val['quantity']))
-# total_time = time.time()-start
-# print(total_time)
+import time
+start = time.time()
+model_history = model.fit(x=input_dict_train, y=train['quantity'], batch_size=28, epochs=100,
+                          validation_data = (input_dict_val,val['quantity']))
+total_time = time.time()-start
+print(total_time)
 
-# model.summary()
+model.summary()
 
 
 
@@ -284,7 +294,7 @@ for i in random_rows:
     optimizer = get_optimizer(grid_row['learning_rate'], grid_row['optimizer_name'])
     model.compile(loss='mse', optimizer=optimizer)
 
-    # count hidden layers in model 
+    # count hidden layers in model
     hidden_layers = len(grid_row['nodes_list'])
 
 # saving the best weights for the selected model
@@ -323,7 +333,7 @@ for i in random_rows:
                          'batch_size':grid_row['batch_size'],'clipnorm': grid_row['clipnorm'],
                          'min_val_loss':min(history["val_loss"]),'epochs':len(history['val_loss'])})#,'activation_function':'grid_row['activation_function']','batch_norm':'grid_row['batch_norm']' ,'initializer_name':'grid_row['initializer_name']','learning_rate':'grid_row['learning_rate']','optimizer_name':'grid_row['optimizer_name']','batch_size':'grid_row['batch_size']','min_val_loss':'min(histories[i].history["val_loss"])'})
 
-    
+
 
     # Save results
     #model.save('models/' + str(model_name) + '_1.h5')
