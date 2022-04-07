@@ -165,8 +165,8 @@ def create_model(nodes_list, activation_function, batch_norm = False,
     #### Embedding and Creating Layers
     ## First step is to encode the categorical variables: category and SKU
     # category
-    output_cat = 50
-    output_sku = 16
+    output_cat = 16
+    output_sku = 50
     # nodes_list[0]*2 - output_cat - 3
 
     tf.keras.backend.clear_session()
