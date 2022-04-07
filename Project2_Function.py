@@ -16,6 +16,8 @@ from tensorflow import feature_column
 from tensorflow.keras import layers
 from itertools import product
 import csv
+import time
+
 
 #### Reading and Cleaning
 PRICING= pd.read_csv('pricing.csv')
@@ -204,6 +206,7 @@ dictionary = {'nodes_list': [[200,100,50], [1000, 500, 250, 125, 75, 25], [5000,
               'epochs':[2, 10],
               'batch_size': [1, 25, 30, 28, 50],# prioritize 28
               'clipnorm':[False]}
+
 grid = expand_grid(dictionary)
 
 # Remove incompatible combinations for weight initialization and activaiton functions
@@ -268,17 +271,21 @@ input_dict_val = get_input_dict(val)
 model = create_model(nodes_list = [30,15,6], activation_function='elu', batch_norm = False,
                      initializer_name = 'he_avg_uniform')
 
-optimizer = get_optimizer(0.01, 'Adam')
-model.compile(loss='mse', optimizer=optimizer)
 
-import time
-start = time.time()
-model_history = model.fit(x=input_dict_train, y=train['quantity'], batch_size=50, epochs=1, validation_data = (input_dict_val,val['quantity']))
-total_time = time.time()-start
-print(total_time)
+# optimizer = get_optimizer(0.01, 'Adam')
+# model.compile(loss='mse', optimizer=optimizer)
+
+# import time
+# start = time.time()
+# model_history = model.fit(x=input_dict_train, y=train['quantity'], batch_size=50, epochs=1, validation_data = (input_dict_val,val['quantity']))
+# total_time = time.time()-start
+# print(total_time)
+
+# model.summary()
 
 model.summary()
 model.save('models/' + 'Original_M.h5')
+
 
 
 # how many random models to try and save
@@ -299,12 +306,43 @@ for i in random_rows:
     optimizer = get_optimizer(grid_row['learning_rate'], grid_row['optimizer_name'])
     model.compile(loss='mse', optimizer=optimizer)
 
+    # count hidden layers in model 
+    hidden_layers = len(grid_row['nodes_list'])
+
+# saving the best weights for the selected model
+    checkpoint_cb=tf.keras.callbacks.ModelCheckpoint(
+    filepath='models/' + str(model_name) + '_1.h5',
+    save_freq=  'epoch',
+    save_best_only=True)
+
+# stopping the training if the validation loss does not improve for 5 epochs
+    early_stopping_cb=tf.keras.callbacks.EarlyStopping(patience=5,restore_best_weights=True)
+
+# might need to fix batch size to a higher amount if the training is taking too long
+    start = time.time()
     model_history = model.fit(x=input_dict_train, y=train['quantity'], batch_size=grid_row['batch_size'],
-                              epochs=grid_row['epochs'], validation_data = (input_dict_val, val['quantity']))
+                              epochs=grid_row['epochs'], validation_data = (input_dict_val, val['quantity']),callbacks=[checkpoint_cb,early_stopping_cb])
     histories.append(model_history)
+    total_time = time.time()-start
+    history=model_history.history
+
+    # read header from models.csv file
+    with open('models.csv', "r") as f:
+        reader = csv.reader(f)
+        for header in reader:
+            break
+    #rename header column 'model' due to reoccuring text error
+    header[0]='model'
+
+    # add row to CSV file for each model ran in loop
+    with open('models.csv', "a", newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=header)
+        writer.writerow({'hidden_layers':hidden_layers,'train_time':total_time,'model':model_name,'nodes_list':grid_row['nodes_list'],'activation_function':grid_row['activation_function'],'batch_norm':grid_row['batch_norm'] ,'initializer_name':grid_row['initializer_name'],'learning_rate':grid_row['learning_rate'],'optimizer_name':grid_row['optimizer_name'],'batch_size':grid_row['batch_size'],'min_val_loss':min(history["val_loss"]),'epochs':len(history['val_loss'])})#,'activation_function':'grid_row['activation_function']','batch_norm':'grid_row['batch_norm']' ,'initializer_name':'grid_row['initializer_name']','learning_rate':'grid_row['learning_rate']','optimizer_name':'grid_row['optimizer_name']','batch_size':'grid_row['batch_size']','min_val_loss':'min(histories[i].history["val_loss"])'})
+
+    
 
     # Save results
-    model.save('models/' + str(model_name) + '_1.h5')
+    #model.save('models/' + str(model_name) + '_1.h5')
     write_dict(grid_row, name='models/' + str(model_name) + '_1.csv')
 
 # Print Model Results
@@ -312,3 +350,17 @@ for i in range(len(histories)):
     print('model_' + str(random_rows[i]) + ':\n' +
           str(grid.loc[random_rows[i]]) + '\n' +
           str(histories[i].history))
+
+
+
+
+#### NOTES#######
+# Because of early stopping, no need to try out different epoch sizes. 
+# An example is that setting the epochs to 10, early stopping might stop the training after 5 epochs.
+
+
+# Training is extremely slow with a small batch size
+
+
+# The best model is the one with the lowest validation loss. Need to compare validation loss between models. 
+# If a certain activation function has higher validation loss than the minumum after a couple tries, drop that activation function from the grid
