@@ -22,8 +22,8 @@ import time
 #### Reading and Cleaning
 train = pd.read_csv('train65.csv')
 val = pd.read_csv('val65.csv')
-test = pd.read_csv('test65.csv')
-
+train = train.iloc[: , 1:]
+val = val.iloc[: , 1:]
 
 # Check if the values are consecutively encoded:
 def checkConsecutive(l):
@@ -158,7 +158,7 @@ def create_model(nodes_list, activation_function, batch_norm = False,
 
     tf.keras.backend.clear_session()
     inputs_cat = tf.keras.layers.Input(shape=(1,),name = 'in_cats')
-    embedding_cat = tf.keras.layers.Embedding(input_dim=n_unique_cats+1, output_dim=output_cat, input_length=1,name = 'embedding_cat')(inputs_cat)
+    embedding_cat = tf.keras.layers.Embedding(input_dim=n_unique_cats, output_dim=output_cat, input_length=1,name = 'embedding_cat')(inputs_cat)
     embedding_flat_cat = tf.keras.layers.Flatten(name='flatten')(embedding_cat)
 
     # sku
