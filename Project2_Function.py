@@ -21,7 +21,9 @@ import time
 
 #### Reading and Cleaning
 PRICING= pd.read_csv('pricing.csv')
-PRICING.head()
+print(.7*len(PRICING))
+PRICING = PRICING.sample(frac=.7, random_state=5)
+
 
 # Check if the values are consecutively encoded:
 def checkConsecutive(l):
@@ -30,10 +32,18 @@ print(checkConsecutive(np.unique(PRICING['sku'])))
 print(checkConsecutive(np.unique(PRICING['category'])))
 
 # Change category to consecutive integer
-cond_list = [PRICING['category']<2, PRICING['category']>2, PRICING['category']==2]
-choice_list = [PRICING['category'], PRICING['category']-1, -1]
-PRICING["category"] = np.select(cond_list,choice_list)
+# cond_list = [PRICING['category']<2, PRICING['category']>2, PRICING['category']==2]
+# choice_list = [PRICING['category'], PRICING['category']-1, -1]
+# PRICING["category"] = np.select(cond_list,choice_list)
+# print(checkConsecutive(np.unique(PRICING['category'])))
+
+PRICING['category'] = pd.Categorical(PRICING['category'])
+PRICING['category'] = PRICING['category'].cat.codes
 print(checkConsecutive(np.unique(PRICING['category'])))
+
+PRICING['sku'] = pd.Categorical(PRICING['sku'])
+PRICING['sku'] = PRICING['sku'].cat.codes
+print(checkConsecutive(np.unique(PRICING['sku'])))
 
 n_unique_cats = PRICING['category'].nunique()
 n_unique_skus = PRICING['sku'].nunique()
@@ -155,8 +165,8 @@ def create_model(nodes_list, activation_function, batch_norm = False,
     #### Embedding and Creating Layers
     ## First step is to encode the categorical variables: category and SKU
     # category
-    output_cat = 16
-    output_sku = 50
+    output_cat = 50
+    output_sku = 16
     # nodes_list[0]*2 - output_cat - 3
 
     tf.keras.backend.clear_session()
@@ -197,15 +207,15 @@ def expand_grid(dictionary):
                        columns=dictionary.keys())
 
 # Creating a a grid with combinations we might like to try
-dictionary = {'nodes_list': [[200,100,50], [1000, 500, 250, 125, 75, 25], [5000, 2500, 1250, 750, 250, 100, 50]],
+dictionary = {'nodes_list': [[1000, 500, 250, 125, 75, 25], [5000, 2500, 1250, 750, 250, 100, 50]],
               'activation_function': ["sigmoid","tanh","relu","elu"],
               'learning_rate': [0.001, 0.01,0.1],
               'batch_norm': [True, False],
               'initializer_name': ['glorot_uniform', 'glorot_normal', 'uniform', 'untruncated_normal', 'he_normal', 'he_uniform', 'he_avg_normal', 'he_avg_uniform'],
               'optimizer_name':["plain SGD","nesterov","RMSprop","Adam"],
-              'epochs':[2, 10],
-              'batch_size': [1, 25, 30, 28, 50],# prioritize 28
-              'clipnorm':[False]}
+              'epochs':[100],
+              'batch_size': [1, 28, 50],
+              'clipnorm': [False]} # prioritize 28
 
 grid = expand_grid(dictionary)
 
@@ -232,56 +242,43 @@ grid = grid.reset_index(drop = True)
 ## splitting the data into test and train sets
 # train, test = train_test_split(PRICING, test_size=0.2)
 # train, val = train_test_split(train, test_size=0.2)
+
+train, test = train_test_split(PRICING, test_size=0.2, random_state = 123)
+train, val = train_test_split(train, test_size=0.2, random_state = 2022)
 del(PRICING)
-train =  pd.read_csv("train.csv")
-test =  pd.read_csv("test.csv")
-val =  pd.read_csv("val.csv")
 
 def get_input_dict(data):
     ## seperating the numerical features from rest of dataset
     num_features=data.drop(['sku'], axis=1)
-    num_features=num_features.drop(['cat_consec'], axis=1)
+    num_features=num_features.drop(['category'], axis=1)
     num_features=num_features.drop(['quantity'], axis=1)
 
     ## creates an input dictionary for the model
     input_dict= {
-        'in_cats':data["cat_consec"],
+        'in_cats':data["category"],
         "in_sku":data["sku"],
         "in_num": num_features
     }
     return input_dict
 
-def write_dict(dict, name):
-    '''
-    to save model grid row characteristics for models
-    :param dict:
-    :param name:
-    :return:
-    '''
-    w = csv.writer(open(name, "w"))
-    for key, val in dict.items():
-        w.writerow([key, val])
-
-
 ## Intuitive Selection
 input_dict_train = get_input_dict(train)
 input_dict_val = get_input_dict(val)
 
-## Model 1 Intuitive Selection
-model = create_model(nodes_list = [30,15,6], activation_function='elu', batch_norm = False,
+
+model = create_model(nodes_list = [1000, 500, 250, 125, 75, 25], activation_function='elu', batch_norm = True,
                      initializer_name = 'he_avg_uniform')
+optimizer = get_optimizer(0.01, 'Adam')
+model.compile(loss='mse', optimizer=optimizer)
 
+import time
+start = time.time()
+model_history = model.fit(x=input_dict_train, y=train['quantity'], batch_size=28, epochs=100,
+                          validation_data = (input_dict_val,val['quantity']))
+total_time = time.time()-start
+print(total_time)
 
-# optimizer = get_optimizer(0.01, 'Adam')
-# model.compile(loss='mse', optimizer=optimizer)
-
-# import time
-# start = time.time()
-# model_history = model.fit(x=input_dict_train, y=train['quantity'], batch_size=50, epochs=1, validation_data = (input_dict_val,val['quantity']))
-# total_time = time.time()-start
-# print(total_time)
-
-# model.summary()
+model.summary()
 
 model.summary()
 model.save('models/' + 'Original_M.h5')
@@ -306,7 +303,7 @@ for i in random_rows:
     optimizer = get_optimizer(grid_row['learning_rate'], grid_row['optimizer_name'])
     model.compile(loss='mse', optimizer=optimizer)
 
-    # count hidden layers in model 
+    # count hidden layers in model
     hidden_layers = len(grid_row['nodes_list'])
 
 # saving the best weights for the selected model
@@ -321,7 +318,8 @@ for i in random_rows:
 # might need to fix batch size to a higher amount if the training is taking too long
     start = time.time()
     model_history = model.fit(x=input_dict_train, y=train['quantity'], batch_size=grid_row['batch_size'],
-                              epochs=grid_row['epochs'], validation_data = (input_dict_val, val['quantity']),callbacks=[checkpoint_cb,early_stopping_cb])
+                              epochs=grid_row['epochs'], validation_data = (input_dict_val, val['quantity']),
+                              callbacks=[checkpoint_cb,early_stopping_cb])
     histories.append(model_history)
     total_time = time.time()-start
     history=model_history.history
@@ -337,13 +335,17 @@ for i in random_rows:
     # add row to CSV file for each model ran in loop
     with open('models.csv', "a", newline='') as f:
         writer = csv.DictWriter(f, fieldnames=header)
-        writer.writerow({'hidden_layers':hidden_layers,'train_time':total_time,'model':model_name,'nodes_list':grid_row['nodes_list'],'activation_function':grid_row['activation_function'],'batch_norm':grid_row['batch_norm'] ,'initializer_name':grid_row['initializer_name'],'learning_rate':grid_row['learning_rate'],'optimizer_name':grid_row['optimizer_name'],'batch_size':grid_row['batch_size'],'min_val_loss':min(history["val_loss"]),'epochs':len(history['val_loss'])})#,'activation_function':'grid_row['activation_function']','batch_norm':'grid_row['batch_norm']' ,'initializer_name':'grid_row['initializer_name']','learning_rate':'grid_row['learning_rate']','optimizer_name':'grid_row['optimizer_name']','batch_size':'grid_row['batch_size']','min_val_loss':'min(histories[i].history["val_loss"])'})
+        writer.writerow({'hidden_layers':hidden_layers,'train_time':total_time,'model':model_name,
+                         'nodes_list':grid_row['nodes_list'],'activation_function':grid_row['activation_function'],
+                         'batch_norm':grid_row['batch_norm'] ,'initializer_name':grid_row['initializer_name'],
+                         'learning_rate':grid_row['learning_rate'],'optimizer_name':grid_row['optimizer_name'],
+                         'batch_size':grid_row['batch_size'],'clipnorm': grid_row['clipnorm'],
+                         'min_val_loss':min(history["val_loss"]),'epochs':len(history['val_loss'])})#,'activation_function':'grid_row['activation_function']','batch_norm':'grid_row['batch_norm']' ,'initializer_name':'grid_row['initializer_name']','learning_rate':'grid_row['learning_rate']','optimizer_name':'grid_row['optimizer_name']','batch_size':'grid_row['batch_size']','min_val_loss':'min(histories[i].history["val_loss"])'})
 
-    
+
 
     # Save results
     #model.save('models/' + str(model_name) + '_1.h5')
-    write_dict(grid_row, name='models/' + str(model_name) + '_1.csv')
 
 # Print Model Results
 for i in range(len(histories)):
