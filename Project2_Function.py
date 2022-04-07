@@ -23,7 +23,6 @@ import time
 PRICING= pd.read_csv('pricing.csv')
 print(.7*len(PRICING))
 PRICING = PRICING.sample(frac=.7, random_state=5)
-len(np.unique(PRICING['sku']))
 
 
 # Check if the values are consecutively encoded:
@@ -229,10 +228,10 @@ grid = grid.reset_index(drop = True)
 ## splitting the data into test and train sets
 # train, test = train_test_split(PRICING, test_size=0.2)
 # train, val = train_test_split(train, test_size=0.2)
+
+train, test = train_test_split(PRICING, test_size=0.2, random_state = 123)
+train, val = train_test_split(train, test_size=0.2, random_state = 2022)
 del(PRICING)
-train =  pd.read_csv("train.csv")
-test =  pd.read_csv("test.csv")
-val =  pd.read_csv("val.csv")
 
 def get_input_dict(data):
     ## seperating the numerical features from rest of dataset
