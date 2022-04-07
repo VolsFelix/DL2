@@ -165,8 +165,8 @@ def create_model(nodes_list, activation_function, batch_norm = False,
     #### Embedding and Creating Layers
     ## First step is to encode the categorical variables: category and SKU
     # category
-    output_cat = 50
-    output_sku = 16
+    output_cat = 16
+    output_sku = 50
     # nodes_list[0]*2 - output_cat - 3
 
     tf.keras.backend.clear_session()
@@ -214,7 +214,7 @@ dictionary = {'nodes_list': [[1000, 500, 250, 125, 75, 25], [5000, 2500, 1250, 7
               'initializer_name': ['glorot_uniform', 'glorot_normal', 'uniform', 'untruncated_normal', 'he_normal', 'he_uniform', 'he_avg_normal', 'he_avg_uniform'],
               'optimizer_name':["plain SGD","nesterov","RMSprop","Adam"],
               'epochs':[100],
-              'batch_size': [1, 28, 50],
+              'batch_size': [28],
               'clipnorm': [False]} # prioritize 28
 
 grid = expand_grid(dictionary)
