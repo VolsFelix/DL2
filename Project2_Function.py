@@ -22,8 +22,10 @@ import time
 #### Reading and Cleaning
 train = pd.read_csv('train65.csv')
 val = pd.read_csv('val65.csv')
+test= pd.read_csv('test65.csv')
 train = train.iloc[: , 1:]
 val = val.iloc[: , 1:]
+test = test.iloc[: , 1:]
 
 # Check if the values are consecutively encoded:
 def checkConsecutive(l):
