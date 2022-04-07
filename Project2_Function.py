@@ -202,7 +202,8 @@ dictionary = {'nodes_list': [[200,100,50], [1000, 500, 250, 125, 75, 25], [5000,
               'initializer_name': ['glorot_uniform', 'glorot_normal', 'uniform', 'untruncated_normal', 'he_normal', 'he_uniform', 'he_avg_normal', 'he_avg_uniform'],
               'optimizer_name':["plain SGD","nesterov","RMSprop","Adam"],
               'epochs':[2, 10],
-              'batch_size': [1, 25, 30, 28, 50] } # prioritize 28
+              'batch_size': [1, 25, 30, 28, 50],# prioritize 28
+              'clipnorm':[False]}
 grid = expand_grid(dictionary)
 
 # Remove incompatible combinations for weight initialization and activaiton functions
@@ -262,6 +263,8 @@ def write_dict(dict, name):
 ## Intuitive Selection
 input_dict_train = get_input_dict(train)
 input_dict_val = get_input_dict(val)
+
+## Model 1 Intuitive Selection
 model = create_model(nodes_list = [30,15,6], activation_function='elu', batch_norm = False,
                      initializer_name = 'he_avg_uniform')
 
@@ -275,6 +278,7 @@ total_time = time.time()-start
 print(total_time)
 
 model.summary()
+model.save('models/' + 'Original_M.h5')
 
 
 # how many random models to try and save
