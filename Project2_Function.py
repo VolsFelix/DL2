@@ -20,33 +20,20 @@ import time
 
 
 #### Reading and Cleaning
-PRICING= pd.read_csv('pricing.csv')
-print(.7*len(PRICING))
-PRICING = PRICING.sample(frac=.7, random_state=5)
+train = pd.read_csv('train65.csv')
+val = pd.read_csv('val65.csv')
+test = pd.read_csv('test65.csv')
 
 
 # Check if the values are consecutively encoded:
 def checkConsecutive(l):
     return (sorted(l) == list(range(min(l), max(l) + 1)))
-print(checkConsecutive(np.unique(PRICING['sku'])))
-print(checkConsecutive(np.unique(PRICING['category'])))
+print(checkConsecutive(np.unique(pd.concat([train, val, test])['category'])))
+print(checkConsecutive(np.unique(pd.concat([train, val, test])['sku'])))
 
-# Change category to consecutive integer
-# cond_list = [PRICING['category']<2, PRICING['category']>2, PRICING['category']==2]
-# choice_list = [PRICING['category'], PRICING['category']-1, -1]
-# PRICING["category"] = np.select(cond_list,choice_list)
-# print(checkConsecutive(np.unique(PRICING['category'])))
+n_unique_cats = len(np.unique(pd.concat([train, val, test])['category']))
+n_unique_skus = len(np.unique(pd.concat([train, val, test])['sku']))
 
-PRICING['category'] = pd.Categorical(PRICING['category'])
-PRICING['category'] = PRICING['category'].cat.codes
-print(checkConsecutive(np.unique(PRICING['category'])))
-
-PRICING['sku'] = pd.Categorical(PRICING['sku'])
-PRICING['sku'] = PRICING['sku'].cat.codes
-print(checkConsecutive(np.unique(PRICING['sku'])))
-
-n_unique_cats = PRICING['category'].nunique()
-n_unique_skus = PRICING['sku'].nunique()
 
 #### Defining Functions to Use to build and tune model
 ## kernel_initializer
