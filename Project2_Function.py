@@ -230,10 +230,6 @@ grid = grid.reset_index(drop = True)
 # train, test = train_test_split(PRICING, test_size=0.2)
 # train, val = train_test_split(train, test_size=0.2)
 
-train, test = train_test_split(PRICING, test_size=0.2, random_state = 123)
-train, val = train_test_split(train, test_size=0.2, random_state = 2022)
-del(PRICING)
-
 def get_input_dict(data):
     ## seperating the numerical features from rest of dataset
     num_features=data.drop(['sku'], axis=1)
