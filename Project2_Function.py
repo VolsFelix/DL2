@@ -305,7 +305,7 @@ for i in random_rows:
     start = time.time()
     model_history = model.fit(x=input_dict_train, y=train['quantity'], batch_size=grid_row['batch_size'],
                               epochs=grid_row['epochs'], validation_data = (input_dict_val, val['quantity']),
-                              callbacks=[checkpoint_cb,early_stopping_cb])
+                              callbacks=[checkpoint_cb,early_stopping_cb, terminate_na])
     histories.append(model_history)
     total_time = time.time()-start
     history=model_history.history
@@ -335,10 +335,10 @@ for i in random_rows:
     #model.save('models/' + str(model_name) + '_1.h5')
 
 # Print Model Results
-for i in range(len(histories)):
-    print('model_' + str(random_rows[i]) + ':\n' +
-          str(grid.loc[random_rows[i]]) + '\n' +
-          str(histories[i].history))
+# for i in range(len(histories)):
+#     print('model_' + str(random_rows[i]) + ':\n' +
+#           str(grid.loc[random_rows[i]]) + '\n' +
+#           str(histories[i].history))
 
 
 
