@@ -21,7 +21,10 @@ import time
 
 #### Reading and Cleaning
 PRICING= pd.read_csv('pricing.csv')
-PRICING.head()
+print(.7*len(PRICING))
+PRICING = PRICING.sample(frac=.7, random_state=5)
+len(np.unique(PRICING['sku']))
+
 
 # Check if the values are consecutively encoded:
 def checkConsecutive(l):
@@ -151,8 +154,8 @@ def create_model(nodes_list, activation_function, batch_norm = False,
     #### Embedding and Creating Layers
     ## First step is to encode the categorical variables: category and SKU
     # category
-    output_cat = 16
-    output_sku = 50
+    output_cat = round(.7*n_unique_cats)
+    output_sku = round(.7*n_unique_skus)
     # nodes_list[0]*2 - output_cat - 3
 
     tf.keras.backend.clear_session()
@@ -244,18 +247,6 @@ def get_input_dict(data):
         "in_num": num_features
     }
     return input_dict
-
-def write_dict(dict, name):
-    '''
-    to save model grid row characteristics for models
-    :param dict:
-    :param name:
-    :return:
-    '''
-    w = csv.writer(open(name, "w"))
-    for key, val in dict.items():
-        w.writerow([key, val])
-
 
 ## Intuitive Selection
 # input_dict_train = get_input_dict(train)
