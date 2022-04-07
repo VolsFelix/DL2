@@ -335,7 +335,8 @@ for i in random_rows:
     # add row to CSV file for each model ran in loop
     with open('models.csv', "a", newline='') as f:
         writer = csv.DictWriter(f, fieldnames=header)
-        writer.writerow({'hidden_layers':hidden_layers,'train_time':total_time,'model':model_name,
+
+        writer.writerow({'min_training_loss':min(history["loss"]),'hidden_layers':hidden_layers,'train_time':total_time,'model':model_name,
                          'nodes_list':grid_row['nodes_list'],'activation_function':grid_row['activation_function'],
                          'batch_norm':grid_row['batch_norm'] ,'initializer_name':grid_row['initializer_name'],
                          'learning_rate':grid_row['learning_rate'],'optimizer_name':grid_row['optimizer_name'],
