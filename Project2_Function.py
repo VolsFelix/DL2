@@ -126,26 +126,30 @@ def create_hidden(inputs, nodes_list, activation_function, batch_norm = False, i
 
 
 ## Optimizers
-def get_optimizer(learning_rate, optimizer_name = None):
+def get_optimizer(learning_rate, optimizer_name = None, clipnorm = False):
     '''
     :param learning_rate: learning rate
     :param optimizer_name: 'momentum','nesterov','RMSprop','Adam', 'learning rate scheduling', 'plain SGD'
     :return: optimizer arg for model.compile
     '''
+    if clipnorm:
+        clip = 1
+    else:
+        clip = None
     if optimizer_name == 'momentum':
-        return tf.keras.optimizers.SGD(learning_rate = learning_rate, momentum = 0.9, clipnorm = 1.0)
+        return tf.keras.optimizers.SGD(learning_rate = learning_rate, momentum = 0.9, clipnorm = clip)
     elif optimizer_name == 'nesterov':
-        return tf.keras.optimizers.SGD(learning_rate = learning_rate, momentum = 0.9, nesterov = True, clipnorm = 1.0)
+        return tf.keras.optimizers.SGD(learning_rate = learning_rate, momentum = 0.9, nesterov = True, clipnorm = clip)
     elif optimizer_name == 'adagrad':
-        return tf.keras.optimizers.Adagrad(learning_rate = learning_rate, initial_accumulator_value = 0.1, epsilon = 1e-07, clipnorm = 1.0)
+        return tf.keras.optimizers.Adagrad(learning_rate = learning_rate, initial_accumulator_value = 0.1, epsilon = 1e-07, clipnorm = clip)
     elif optimizer_name == 'RMSprop':
-        return tf.keras.optimizers.RMSprop(learning_rate = learning_rate, rho = 0.9, momentum = 0.0, epsilon = 1e-07, clipnorm = 1.0)
+        return tf.keras.optimizers.RMSprop(learning_rate = learning_rate, rho = 0.9, momentum = 0.0, epsilon = 1e-07, clipnorm = clip)
     elif optimizer_name == 'Adam':
-        return tf.keras.optimizers.Adam(learning_rate = learning_rate, beta_1 = 0.9, beta_2 = 0.99, epsilon = 1e-07, clipnorm = 1.0)
+        return tf.keras.optimizers.Adam(learning_rate = learning_rate, beta_1 = 0.9, beta_2 = 0.99, epsilon = 1e-07, clipnorm = clip)
     elif optimizer_name == 'learning rate scheduling':
-        return tf.keras.optimizers.schedules.ExponentialDecay(learning_rate, 10000, 0.95, clipnorm = 1.0)
+        return tf.keras.optimizers.schedules.ExponentialDecay(learning_rate, 10000, 0.95, clipnorm = clip)
     elif optimizer_name == 'plain SGD':
-        return tf.keras.optimizers.SGD(learning_rate = learning_rate, clipnorm = 1.0)
+        return tf.keras.optimizers.SGD(learning_rate = learning_rate, clipnorm = clip)
 
 
 ## Creating model based on inputs
@@ -211,7 +215,8 @@ dictionary = {'nodes_list': [[1000, 500, 250, 125, 75, 25], [5000, 2500, 1250, 7
               'optimizer_name':["plain SGD","nesterov","RMSprop","Adam"],
               'epochs':[100],
               'batch_size': [1, 28, 50],
-              'clipnorm': [True]} # prioritize 28
+              'clipnorm': [False]} # prioritize 28
+
 grid = expand_grid(dictionary)
 
 # Remove incompatible combinations for weight initialization and activaiton functions
@@ -260,6 +265,7 @@ def get_input_dict(data):
 input_dict_train = get_input_dict(train)
 input_dict_val = get_input_dict(val)
 
+
 model = create_model(nodes_list = [1000, 500, 250, 125, 75, 25], activation_function='elu', batch_norm = True,
                      initializer_name = 'he_avg_uniform')
 optimizer = get_optimizer(0.01, 'Adam')
@@ -273,6 +279,9 @@ total_time = time.time()-start
 print(total_time)
 
 model.summary()
+
+model.summary()
+model.save('models/' + 'Original_M.h5')
 
 
 
