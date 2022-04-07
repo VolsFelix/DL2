@@ -208,13 +208,13 @@ def expand_grid(dictionary):
 
 # Creating a a grid with combinations we might like to try
 dictionary = {'nodes_list': [[1000, 500, 250, 125, 75, 25], [5000, 2500, 1250, 750, 250, 100, 50]],
-              'activation_function': ["elu"],
+              'activation_function': ["sigmoid"],
               'learning_rate': [0.001, 0.01,0.1],
               'batch_norm': [True, False],
               'initializer_name': ['glorot_uniform', 'glorot_normal', 'uniform', 'untruncated_normal', 'he_normal', 'he_uniform', 'he_avg_normal', 'he_avg_uniform'],
               'optimizer_name':["plain SGD","nesterov","RMSprop","Adam"],
-              'epochs':[100],
-              'batch_size': [28],
+              'epochs':[2],
+              'batch_size': [1000],
               'clipnorm': [False]} # prioritize 28
 
 grid = expand_grid(dictionary)
@@ -266,22 +266,22 @@ input_dict_train = get_input_dict(train)
 input_dict_val = get_input_dict(val)
 
 
-model = create_model(nodes_list = [1000, 500, 250, 125, 75, 25], activation_function='elu', batch_norm = True,
-                     initializer_name = 'he_avg_uniform')
-optimizer = get_optimizer(0.01, 'Adam')
-model.compile(loss='mse', optimizer=optimizer)
+# model = create_model(nodes_list = [1000, 500, 250, 125, 75, 25], activation_function='elu', batch_norm = True,
+#                 initializer_name = 'he_avg_uniform')
+# optimizer = get_optimizer(0.01, 'Adam')
+# model.compile(loss='mse', optimizer=optimizer)
 
-import time
-start = time.time()
-model_history = model.fit(x=input_dict_train, y=train['quantity'], batch_size=28, epochs=100,
-                          validation_data = (input_dict_val,val['quantity']))
-total_time = time.time()-start
-print(total_time)
+# import time
+# start = time.time()
+# model_history = model.fit(x=input_dict_train, y=train['quantity'], batch_size=28, epochs=100,
+#                           validation_data = (input_dict_val,val['quantity']))
+# total_time = time.time()-start
+# print(total_time)
 
-model.summary()
+# model.summary()
 
-model.summary()
-model.save('models/' + 'Original_M.h5')
+# model.summary()
+# model.save('models/' + 'Original_M.h5')
 
 
 
@@ -315,11 +315,13 @@ for i in random_rows:
 # stopping the training if the validation loss does not improve for 5 epochs
     early_stopping_cb=tf.keras.callbacks.EarlyStopping(patience=5,restore_best_weights=True)
 
+## terminate on NA
+    terminate_na = tf.keras.callbacks.TerminateOnNaN()
 # might need to fix batch size to a higher amount if the training is taking too long
     start = time.time()
     model_history = model.fit(x=input_dict_train, y=train['quantity'], batch_size=grid_row['batch_size'],
                               epochs=grid_row['epochs'], validation_data = (input_dict_val, val['quantity']),
-                              callbacks=[checkpoint_cb,early_stopping_cb])
+                              callbacks=[checkpoint_cb,early_stopping_cb,terminate_na])
     histories.append(model_history)
     total_time = time.time()-start
     history=model_history.history
@@ -336,12 +338,12 @@ for i in random_rows:
     with open('models.csv', "a", newline='') as f:
         writer = csv.DictWriter(f, fieldnames=header)
 
-        writer.writerow({'training_loss':(history["loss"]),'hidden_layers':hidden_layers,'train_time':total_time,'model':model_name,
+        writer.writerow({'train_loss':(history["loss"]),'hidden_layers':hidden_layers,'train_time':total_time,'model':model_name,
                          'nodes_list':grid_row['nodes_list'],'activation_function':grid_row['activation_function'],
                          'batch_norm':grid_row['batch_norm'] ,'initializer_name':grid_row['initializer_name'],
                          'learning_rate':grid_row['learning_rate'],'optimizer_name':grid_row['optimizer_name'],
                          'batch_size':grid_row['batch_size'],'clipnorm': grid_row['clipnorm'],
-                         'min_val_loss':history["val_loss"],'epochs':len(history['val_loss'])})#,'activation_function':'grid_row['activation_function']','batch_norm':'grid_row['batch_norm']' ,'initializer_name':'grid_row['initializer_name']','learning_rate':'grid_row['learning_rate']','optimizer_name':'grid_row['optimizer_name']','batch_size':'grid_row['batch_size']','min_val_loss':'min(histories[i].history["val_loss"])'})
+                         'val_loss':(history["val_loss"]),'epochs':len(history['val_loss'])})#,'activation_function':'grid_row['activation_function']','batch_norm':'grid_row['batch_norm']' ,'initializer_name':'grid_row['initializer_name']','learning_rate':'grid_row['learning_rate']','optimizer_name':'grid_row['optimizer_name']','batch_size':'grid_row['batch_size']','min_val_loss':'min(histories[i].history["val_loss"])'})
 
 
 
