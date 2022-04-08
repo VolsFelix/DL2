@@ -300,11 +300,14 @@ for i in random_rows:
 # stopping the training if the validation loss does not improve for 5 epochs
     early_stopping_cb=tf.keras.callbacks.EarlyStopping(patience=5,restore_best_weights=True)
 
+## terminate on NA
+    terminate_na = tf.keras.callbacks.TerminateOnNaN()
+
 # might need to fix batch size to a higher amount if the training is taking too long
     start = time.time()
     model_history = model.fit(x=input_dict_train, y=train['quantity'], batch_size=grid_row['batch_size'],
                               epochs=grid_row['epochs'], validation_data = (input_dict_val, val['quantity']),
-                              callbacks=[checkpoint_cb,early_stopping_cb])
+                              callbacks=[checkpoint_cb,early_stopping_cb,terminate_na])
     histories.append(model_history)
     total_time = time.time()-start
     history=model_history.history
