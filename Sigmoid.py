@@ -321,12 +321,12 @@ for i in random_rows:
     with open('models.csv', "a", newline='') as f:
         writer = csv.DictWriter(f, fieldnames=header)
 
-        writer.writerow({'min_training_loss':min(history["loss"]),'hidden_layers':hidden_layers,'train_time':total_time,'model':model_name,
+        writer.writerow({'train_loss':history["loss"],'hidden_layers':hidden_layers,'train_time':total_time,'model':model_name,
                          'nodes_list':grid_row['nodes_list'],'activation_function':grid_row['activation_function'],
                          'batch_norm':grid_row['batch_norm'] ,'initializer_name':grid_row['initializer_name'],
                          'learning_rate':grid_row['learning_rate'],'optimizer_name':grid_row['optimizer_name'],
                          'batch_size':grid_row['batch_size'],'clipnorm': grid_row['clipnorm'],
-                         'min_val_loss':min(history["val_loss"]),'epochs':len(history['val_loss'])})#,'activation_function':'grid_row['activation_function']','batch_norm':'grid_row['batch_norm']' ,'initializer_name':'grid_row['initializer_name']','learning_rate':'grid_row['learning_rate']','optimizer_name':'grid_row['optimizer_name']','batch_size':'grid_row['batch_size']','min_val_loss':'min(histories[i].history["val_loss"])'})
+                         'val_loss':history["val_loss"],'epochs':len(history['val_loss'])})#,'activation_function':'grid_row['activation_function']','batch_norm':'grid_row['batch_norm']' ,'initializer_name':'grid_row['initializer_name']','learning_rate':'grid_row['learning_rate']','optimizer_name':'grid_row['optimizer_name']','batch_size':'grid_row['batch_size']','min_val_loss':'min(histories[i].history["val_loss"])'})
 
 
 
