@@ -111,7 +111,7 @@ def create_hidden(inputs, nodes_list, activation_function, batch_norm = False, i
         if len(nodes_list) > 1:
             for i in range(len(nodes_list) - 1):
                 hidden = tf.keras.layers.Dense(nodes_list[i+1], kernel_initializer=kernel_initializer,
-                                               activation_function = activation_function)(hidden)
+                                               activation = activation_function)(hidden)
         return hidden
 
 
