@@ -4,7 +4,7 @@ Deep Learning Project 2
 ## Python File Descriptions:
 - **Project2_Funciton.py:** code to build neural network models using custom function method
 - **Keras_Tuner_Group6.py:** code to build neural network models using KerasTuner package
-- **Models_preprocessing.py:* code used to convert models.csv to the proper format in models_altered.csv
+- **Models_preprocessing.py:** code used to convert models.csv to the proper format in models_altered.csv
 - **loss_plot.py:** Base code used to plot model results after running a model
 
 ## R File Descriptions:
