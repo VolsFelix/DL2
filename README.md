@@ -8,7 +8,7 @@ Deep Learning Project 2
 - **loss_plot.py:** Base code used to plot model results after running a model
 
 # Data File Descriptions
-- **pricing_apr4.csv:*** Original data file
+- **pricing_apr4.csv:** Original data file
 - **test65.csv:** test set 
 - **train65.csv:** training set
 - **val65.csv:** validation set
